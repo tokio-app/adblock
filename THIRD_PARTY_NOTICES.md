@@ -29,3 +29,19 @@ Development tools (TypeScript, Vitest, oxlint, Prettier and the rest of `devDepe
 ## Services
 
 The library downloads filter lists from these hosts when the host app asks it to. None of them is covered by this library's license. Each list belongs to its authors, is subject to its own license, and can change or stop being served at any time. The library downloads them on the user's machine and doesn't redistribute them.
+
+The default lists (`DEFAULT_LISTS`) are the ones uBlock Origin enables by default:
+
+| List                                     | Authors                                                  | License                                            | Downloaded from                                                                            |
+| ---------------------------------------- | -------------------------------------------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| uBlock filters – Ads                     | Raymond Hill and contributors                            | GPL-3.0                                            | `ublockorigin.github.io`, then its mirrors `ublockorigin.pages.dev` and `cdn.jsdelivr.net` |
+| uBlock filters – Badware risks           | Raymond Hill and contributors                            | GPL-3.0                                            | The same hosts                                                                             |
+| uBlock filters – Privacy                 | Raymond Hill and contributors                            | GPL-3.0                                            | The same hosts                                                                             |
+| uBlock filters – Unbreak                 | Raymond Hill and contributors                            | GPL-3.0                                            | The same hosts                                                                             |
+| uBlock filters – Quick fixes             | Raymond Hill and contributors                            | GPL-3.0                                            | The same hosts                                                                             |
+| EasyList                                 | The EasyList authors                                     | GPL-3.0 or CC BY-SA 3.0, at the recipient's choice | The same hosts (uBlock Origin's copy)                                                      |
+| EasyPrivacy                              | The EasyList authors                                     | GPL-3.0 or CC BY-SA 3.0, at the recipient's choice | The same hosts (uBlock Origin's copy)                                                      |
+| Online Malicious URL Blocklist           | The malware-filter project, from URLhaus (abuse.ch) data | CC0-1.0                                            | `malware-filter.gitlab.io`, then `curbengh.github.io`                                      |
+| Peter Lowe's Ad and tracking server list | Peter Lowe                                               | McRae General Public License, non-commercial       | `pgl.yoyo.org`                                                                             |
+
+The list of defaults and their URLs come from uBlock Origin's published asset index (`assets/assets.json`), read as data. A host app can pass its own lists instead; their licenses are then its concern. Peter Lowe's list is licensed for non-commercial use: an app that isn't should leave it out of the lists it passes.

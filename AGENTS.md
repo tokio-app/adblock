@@ -18,6 +18,7 @@ yarn test:coverage     # vitest with a coverage report in coverage/ (text + lcov
 yarn typecheck         # tsc --noEmit over src/, test/, scripts/ and vitest.config.ts
 yarn lint              # oxlint --type-aware, fails on any warning
 yarn format            # prettier --write . (yarn format:check only checks)
+yarn lists             # download the default lists into lists/ and print what parses (opt-in, needs network)
 ```
 
 Verify changes with `yarn test`, `yarn typecheck`, `yarn lint`, `yarn format:check` and `yarn build`. The `verify` skill says when the opt-in runs are needed too.
@@ -32,8 +33,20 @@ Verify changes with `yarn test`, `yarn typecheck`, `yarn lint`, `yarn format:che
 ```
 src/
   index.ts            public exports (the only entry point)
+  engine.ts           Engine: loads the lists, keeps them up to date, parses them
+  util.ts             toError, tryRegex, isRecord
+  lists/              defaults.ts (DEFAULT_LISTS), manager.ts (ListManager: download, mirrors, expiry, HTTP validators,
+                      sub-lists), storage.ts (ListStorage, FileStorage, MemoryStorage), preprocessor.ts (!#if, !#else,
+                      !#endif, !#include and the environment they see)
+  parser/             index.ts (parseLine, parseInto, parseList and the counts), network.ts (network filters and their
+                      options), cosmetic.ts (cosmetic, scriptlet and HTML filters), selector.ts (selectors and procedural
+                      operators), hosts.ts (hostname lists), types.ts (the rules and their flags)
+  electron/           scheme.ts (the scheme entry host apps register)
 test/
   setup.ts            runs before every test file
+  helpers/            fetchStub.ts (a fetch that answers from a table and records requests)
+scripts/
+  lists/              yarn lists: index.ts (downloads and parses the default lists), report.ts (what it prints)
 ```
 
 `THIRD_PARTY_NOTICES.md` credits the documentation the library was written from and lists the services it downloads from. `tsconfig.json` covers `src/`, `test/`, `scripts/` and `vitest.config.ts` for the typecheck and type-aware lint; `tsconfig.build.json` extends it to emit `src/` only (it holds `rootDir`, and leaves out the tests). Generated or downloaded, don't edit: `dist/`, `coverage/`, `lists/`, `reports/`. The package ships only `dist/`, `THIRD_PARTY_NOTICES.md`, `LICENSE`, `README.md` and `package.json` (`files` in `package.json`).
@@ -44,7 +57,7 @@ Notes for one area live in `.claude/rules/<topic>.md`. Claude Code loads each on
 
 **Other agents:** these rules don't load on their own. Before you read or edit files a rule's `paths` match, read that rule.
 
-No area has a rule yet: each gets one as it takes shape.
+- `lists-parser.md`: the default lists, downloads and expiry, `!#if`, and the parser's choices where the wiki is silent
 
 A rule holds what its reader can't get quickly from the code: the user's calls, marked "(the user's call)"; gotchas, with the reason the obvious way breaks; contracts that other code or other repos depend on; and couplings between files. It leaves out what reading the code shows, history, and what AGENTS.md or another rule already says. When a change alters what a rule says, update the rule with it. A new area gets its own rule with `paths`.
 
@@ -120,7 +133,7 @@ Keep these stable; host apps depend on them:
 | #   | Milestone                     | Status  |
 | --- | ----------------------------- | ------- |
 | 0   | Scaffold                      | done    |
-| 1   | Lists and parser              | pending |
+| 1   | Lists and parser              | done    |
 | 2   | Network engine                | pending |
 | 3   | Redirect resources            | pending |
 | 4   | Cosmetic engine               | pending |

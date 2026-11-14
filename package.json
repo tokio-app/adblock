@@ -34,6 +34,7 @@
     "lint": "oxlint --type-aware",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "lists": "tsx scripts/lists/index.ts",
     "prepublishOnly": "yarn build",
     "prepare": "husky"
   },

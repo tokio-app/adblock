@@ -8,7 +8,10 @@ In development. It isn't on npm yet, and the API can still change.
 
 What works so far:
 
-- Nothing yet: this is the project's scaffold.
+- Downloading uBlock Origin's default filter lists, with mirrors, `! Expires:`, HTTP caching and storage you provide, and keeping them up to date in the background.
+- Parsing every line of them into typed rules: network filters with all their options, cosmetic and procedural cosmetic filters, scriptlets and the pre-parsing directives (`!#if`, `!#include`).
+
+Not yet: applying the rules. The network, cosmetic and scriptlet engines and the Electron integration come next.
 
 ## License
 
