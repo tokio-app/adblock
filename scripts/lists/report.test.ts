@@ -1,6 +1,11 @@
 import { expect, test } from "vitest";
 import { parseList } from "../../src/parser/index.js";
-import { formatReport, mergeReasons } from "./report.js";
+import {
+  formatCounts,
+  formatReport,
+  mergeReasons,
+  sortCounts,
+} from "./report.js";
 
 const reports = [
   {
@@ -38,6 +43,13 @@ test("formatReport prints a row per list, a total and the reasons", () => {
     "Invalid: malformed, or discarded as uBlock Origin documents",
     "       1  unknown option: frob",
   ]);
+});
+
+test("formatCounts and sortCounts list names by how many filters use them", () => {
+  expect(
+    formatCounts("Missing", sortCounts({ "b.js": 2, "a.js": 2, "c.js": 11 })),
+  ).toBe("Missing\n      11  c.js\n       2  a.js\n       2  b.js");
+  expect(formatCounts("Missing", [])).toBe("Missing\n  none");
 });
 
 test("formatReport says when nothing was left out", () => {

@@ -1,6 +1,6 @@
 import type { FetchLike } from "../../src/lists/manager.js";
 
-export interface StubResponse {
+interface StubResponse {
   status?: number;
   body?: string;
   headers?: Record<string, string>;

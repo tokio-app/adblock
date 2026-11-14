@@ -2,7 +2,7 @@
  * What `!#if` conditions see: uBlock Origin on a Chromium desktop browser,
  * without what Electron can't do. A name that isn't here is false.
  */
-export const ENVIRONMENT: Readonly<Record<string, boolean>> = {
+const ENVIRONMENT: Readonly<Record<string, boolean>> = {
   ext_ublock: true,
   ext_abp: false,
   ext_ubol: false,

@@ -25,4 +25,9 @@ export interface Scriptlet {
 export interface ScriptletCall {
   name: string;
   args: string[];
+  /**
+   * The text of the redirect resources the arguments name (`war:noop.js`),
+   * by name. Main adds it: the resources aren't in the page.
+   */
+  resources?: Record<string, string>;
 }

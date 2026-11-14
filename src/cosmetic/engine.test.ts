@@ -250,3 +250,23 @@ describe("the cache", () => {
     expect(css(engine, "a.example")).toEqual([`.ad${HIDE}`, `.more${HIDE}`]);
   });
 });
+
+describe("war: resources", () => {
+  test("a scriptlet that names a redirect resource gets its text", () => {
+    const engine = build([
+      "a.example##+js(no-fetch-if, ads.js, war:noop.json)",
+      "a.example##+js(no-xhr-if, ads.js, war:no-such-resource)",
+      "a.example##+js(no-fetch-if, pixel, war:1x1.gif)",
+    ]);
+    expect(engine.forDocument("a.example").scriptlets).toEqual([
+      {
+        name: "prevent-fetch",
+        args: ["ads.js", "war:noop.json"],
+        resources: { "noop.json": "{}" },
+      },
+      { name: "prevent-xhr", args: ["ads.js", "war:no-such-resource"] },
+      // Bytes can't be the text of an answer.
+      { name: "prevent-fetch", args: ["pixel", "war:1x1.gif"] },
+    ]);
+  });
+});

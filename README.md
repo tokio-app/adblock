@@ -17,7 +17,9 @@ What works so far:
 
 - Deciding what a document gets: a stylesheet for its specific and generic cosmetic filters, with exceptions and `generichide`, `specifichide` and `elemhide`, and the procedural filters (`:has-text()`, `:upward()`, `:matches-css()`, `:xpath()`, `:remove()` and the rest) for the page-side code to run.
 
-Not yet: most scriptlets, and the Electron integration that puts all of this in a session.
+- 94 scriptlets written from uBlock Origin's documentation, every one its default lists use but six that aren't documented: `set-constant`, the `abort-*` family, `json-prune`, `prevent-fetch` and `prevent-xhr`, the `trusted-replace-*` and `json-edit` families, cookies, storage, node text and the rest.
+
+Not yet: the Electron integration that puts all of this in a session.
 
 ## License
 

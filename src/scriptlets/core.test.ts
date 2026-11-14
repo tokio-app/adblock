@@ -1,4 +1,5 @@
 import { describe, expect, test } from "vitest";
+import { stubFetch } from "../../test/helpers/fakes.js";
 import { createPage } from "../../test/helpers/page.js";
 import { SCRIPTLETS, findScriptlet } from "./index.js";
 
@@ -417,5 +418,50 @@ describe("addEventListener-defuser", () => {
     const before = page.run("EventTarget.prototype.addEventListener");
     page.inject("aeld");
     expect(page.run("EventTarget.prototype.addEventListener")).toBe(before);
+  });
+});
+
+describe("the defusers", () => {
+  test("the redirect resources that are scriptlets too are in the registry", () => {
+    expect(findScriptlet("nofab")?.name).toBe("nofab");
+    expect(findScriptlet("fuckadblock.js-3.2.0")?.name).toBe("nofab");
+    expect(findScriptlet("bab-defuser")?.name).toBe("nobab");
+    expect(findScriptlet("popads.net")?.name).toBe("popads");
+    expect(findScriptlet("popads-dummy.js")?.name).toBe("popads-dummy");
+  });
+
+  test("run in the page like any scriptlet", async () => {
+    const page = await createPage();
+    page.inject("nofab");
+    page.inject("popads.net");
+    expect(page.run("typeof FuckAdBlock + typeof fuckAdBlock.onDetected")).toBe(
+      "functionfunction",
+    );
+    expect(() => page.run("window.PopAds = {}")).toThrow("magic");
+  });
+});
+
+describe("war: resources", () => {
+  test("a call carries the text of the resource its argument names", async () => {
+    const page = await createPage();
+    stubFetch(page.window);
+    page.injectCalls([
+      {
+        name: "prevent-fetch",
+        args: ["ads.js", "war:stand-in.js"],
+        resources: { "stand-in.js": "window.standIn = 1;" },
+      },
+      // The next call doesn't inherit them.
+      { name: "prevent-fetch", args: ["other.js", "war:stand-in.js"] },
+    ]);
+    const body = (url: string) =>
+      page.run(`fetch(${JSON.stringify(url)}).then((r) => r.text())`);
+    await expect(body("https://x.example/ads.js")).resolves.toBe(
+      "window.standIn = 1;",
+    );
+    await expect(body("https://x.example/other.js")).resolves.toBe("");
+    await expect(body("https://x.example/app.js")).resolves.toBe(
+      "body of https://x.example/app.js",
+    );
   });
 });

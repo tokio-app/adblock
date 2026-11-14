@@ -70,12 +70,28 @@ export function formatReport(reports: readonly ListReport[]): string {
     ["unsupported", "Unsupported: valid syntax the library can't apply"],
     ["invalid", "Invalid: malformed, or discarded as uBlock Origin documents"],
   ] as const) {
-    const reasons = mergeReasons(reports, kind);
-    lines.push("", title);
-    if (reasons.length === 0) lines.push("  none");
-    for (const [reason, count] of reasons) {
-      lines.push(`  ${String(count).padStart(6)}  ${reason}`);
-    }
+    lines.push("", formatCounts(title, mergeReasons(reports, kind)));
   }
   return lines.join("\n");
+}
+
+/** A title, then each name with how many filters it concerns. */
+export function formatCounts(
+  title: string,
+  counts: readonly [name: string, count: number][],
+): string {
+  return [
+    title,
+    ...(counts.length === 0 ? ["  none"] : []),
+    ...counts.map(([name, count]) => `  ${String(count).padStart(6)}  ${name}`),
+  ].join("\n");
+}
+
+/** Names with their counts, most frequent first. */
+export function sortCounts(
+  counts: Readonly<Record<string, number>>,
+): [name: string, count: number][] {
+  return Object.entries(counts).sort(
+    ([a, countA], [b, countB]) => countB - countA || a.localeCompare(b),
+  );
 }

@@ -51,14 +51,17 @@ src/
   content/            what runs in the page from the preload: cosmetics.ts (applies a document's cosmetics and asks for
                       the generic ones), procedural.ts (runs procedural filters)
   scriptlets/         index.ts (SCRIPTLETS, findScriptlet), runner.ts (runs a page's scriptlets), helpers.ts (what they
-                      share), types.ts, and the scriptlets by family
+                      share), types.ts, and the scriptlets by family: abort.ts, setConstant.ts, timers.ts, events.ts,
+                      dom/ (the document, cookies, storage), network/ (requests, responses and the data they carry,
+                      with jsonPath.ts)
   resources/          index.ts (RESOURCES, findResource), binary.ts (GIF, PNG, MP3), documents.ts (HTML, VAST, VMAP),
                       defusers.ts (stand-ins that are scriptlets too), ima.ts (the IMA SDK), surrogates.ts (the others)
   electron/           scheme.ts (the scheme entry host apps register)
 test/
   setup.ts            runs before every test file
   helpers/            fetchStub.ts (a fetch that answers from a table and records requests), page.ts (a jsdom page that
-                      gets the bundled scriptlets, as a real page does)
+                      gets the bundled scriptlets, as a real page does), fakes.ts (what jsdom lacks: fetch, an XHR
+                      helper)
 scripts/
   lists/              yarn lists: index.ts (downloads and parses the default lists), report.ts (what it prints)
   bench/              yarn bench: index.ts
@@ -77,6 +80,7 @@ Notes for one area live in `.claude/rules/<topic>.md`. Claude Code loads each on
 - `network.md`: precedence, how rules are filed, the Public Suffix List, and what `yarn bench` should print
 - `resources.md`: what a redirect resource must be, where each one's behavior comes from, and the ones that are guesses
 - `cosmetic.md`: what a document gets, how the page applies it, and the operators' choices where the wiki is silent
+- `scriptlets.md`: where scriptlets run and what that forbids, how to write and test one, and the ones not implemented
 
 A rule holds what its reader can't get quickly from the code: the user's calls, marked "(the user's call)"; gotchas, with the reason the obvious way breaks; contracts that other code or other repos depend on; and couplings between files. It leaves out what reading the code shows, history, and what AGENTS.md or another rule already says. When a change alters what a rule says, update the rule with it. A new area gets its own rule with `paths`.
 
@@ -156,6 +160,6 @@ Keep these stable; host apps depend on them:
 | 2   | Network engine                | done    |
 | 3   | Redirect resources            | done    |
 | 4   | Cosmetic engine               | done    |
-| 5   | Scriptlets                    | pending |
+| 5   | Scriptlets                    | done    |
 | 6   | Electron integration          | pending |
 | 7   | Smoke run against a real page | pending |

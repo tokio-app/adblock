@@ -1,12 +1,16 @@
 {
   "$schema": "./node_modules/fallow/schema.json",
-  "entry": ["src/index.ts", "scripts/*/index.ts", "vitest.config.ts"],
+  "entry": [
+    "src/index.ts",
+    "src/scriptlets/runner.ts",
+    "scripts/*/index.ts",
+    "vitest.config.ts"
+  ],
   "ignorePatterns": ["lists/**", "reports/**"],
   "duplicates": {
     "minOccurrences": 2,
     "mode": "strict",
     "ignore": ["**/*.js", "package.json"]
   },
-
   "rules": {}
 }

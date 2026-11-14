@@ -1,5 +1,6 @@
 import { JSDOM, type DOMWindow } from "jsdom";
 import { bundleScriptlets } from "../../scripts/build/bundle.js";
+import type { ScriptletCall } from "../../src/scriptlets/types.js";
 
 let bundle: Promise<string> | undefined;
 
@@ -7,6 +8,8 @@ export interface TestPage {
   window: DOMWindow;
   /** Runs a scriptlet in the page, the way the preload does. */
   inject(name: string, ...args: string[]): void;
+  /** The same, for calls as main sends them. */
+  injectCalls(calls: readonly ScriptletCall[]): void;
   /** Runs code as a script of the page, and gives its value. */
   run(code: string): unknown;
   /**
@@ -35,12 +38,17 @@ export async function createPage(
     },
   );
   const { window } = dom;
+  // The page's own eval, before a scriptlet wraps it: the test's way into
+  // the page must not go through what it tests.
+  const evaluate: (code: string) => unknown = window.eval.bind(window);
+  const injectCalls = (calls: readonly ScriptletCall[]) => {
+    evaluate(`(${source})(${JSON.stringify(calls)})`);
+  };
   return {
     window,
-    inject(name, ...args) {
-      window.eval(`(${source})(${JSON.stringify([{ name, args }])})`);
-    },
-    run: (code): unknown => window.eval(code),
+    inject: (name, ...args) => injectCalls([{ name, args }]),
+    injectCalls,
+    run: (code): unknown => evaluate(code),
     script(code, attributes = {}) {
       const element = window.document.createElement("script");
       for (const [name, value] of Object.entries(attributes)) {

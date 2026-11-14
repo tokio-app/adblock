@@ -3,8 +3,6 @@ import {
   T_DOCUMENT,
   T_FONT,
   T_IMAGE,
-  T_INLINE_FONT,
-  T_INLINE_SCRIPT,
   T_MEDIA,
   T_OBJECT,
   T_OTHER,
@@ -35,7 +33,7 @@ export type RequestType =
   | "other"
   | "popup";
 
-export const REQUEST_TYPES: Readonly<Record<RequestType, number>> = {
+const REQUEST_TYPES: Readonly<Record<RequestType, number>> = {
   document: T_DOCUMENT,
   subdocument: T_SUBDOCUMENT,
   stylesheet: T_STYLESHEET,
@@ -188,7 +186,3 @@ export class Request {
     return this.entity(2);
   }
 }
-
-// `inline-script` and `inline-font` aren't requests: a document's response is
-// asked about them (`Request.type` is set to one of them for the question).
-export const INLINE_TYPES = { script: T_INLINE_SCRIPT, font: T_INLINE_FONT };

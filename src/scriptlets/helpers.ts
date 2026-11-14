@@ -11,6 +11,23 @@ const includes = String.prototype.includes;
 
 type Matcher = (text: string) => boolean;
 
+let resources: Readonly<Record<string, string>> = {};
+
+/** Sets what main sent with the scriptlet that is about to run. */
+export function setResources(
+  given: Readonly<Record<string, string>> | undefined,
+): void {
+  resources = given ?? {};
+}
+
+/**
+ * The text of the redirect resource a `war:<name>` argument names, or empty.
+ * Only while the scriptlet is being set up: later it is another's.
+ */
+export function resourceText(name: string): string {
+  return resources[name] ?? "";
+}
+
 /** The regular expression of `/source/flags`, or undefined for anything else. */
 export function parseRegex(text: string): RegExp | undefined {
   const match = /^\/(.+)\/([dgimsuvy]*)$/s.exec(text);
@@ -214,7 +231,7 @@ export function lookUp(chain: string):
  * for scriptlets that only act when called from some code. A frame of the
  * page's own inline scripts reads `inlineScript`.
  */
-export function stackTrace(): string {
+function stackTrace(): string {
   const lines = (new Error().stack ?? "").split("\n").slice(1);
   const here = location.href.split("#")[0]!;
   const frames = lines

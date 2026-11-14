@@ -1,3 +1,4 @@
+import { setResources } from "./helpers.js";
 import { findScriptlet } from "./index.js";
 import type { ScriptletCall } from "./types.js";
 
@@ -8,7 +9,8 @@ import type { ScriptletCall } from "./types.js";
  * reaches the page.
  */
 export function run(calls: readonly ScriptletCall[]): void {
-  for (const { name, args } of calls) {
+  for (const { name, args, resources } of calls) {
+    setResources(resources);
     try {
       findScriptlet(name)?.run(...args);
     } catch {

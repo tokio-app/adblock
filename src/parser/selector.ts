@@ -11,7 +11,7 @@ export interface CompiledSelector {
 }
 
 /** A literal to find, or the source and flags of a regular expression. */
-export type TextMatcher = string | [source: string, flags: string];
+type TextMatcher = string | [source: string, flags: string];
 
 const ALIASES: Readonly<Record<string, string>> = {
   "-abp-has": "has",
@@ -215,7 +215,7 @@ function unquote(text: string): string | undefined {
 }
 
 /** A literal, quoted or bare, or `/regex/flags`, quoted or bare. */
-export function compileTextMatcher(text: string): TextMatcher | undefined {
+function compileTextMatcher(text: string): TextMatcher | undefined {
   text = unquote(text.trim()) ?? text.trim();
   // `/shop/item` is a path, not a regular expression with the flags `item`.
   const regex = /^\/(.+)\/([dgimsuvy]*)$/.exec(text);

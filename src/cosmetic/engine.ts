@@ -10,6 +10,7 @@ import {
   type ScriptletRule,
 } from "../parser/types.js";
 import { PublicSuffixList } from "../psl/psl.js";
+import { findResource } from "../resources/index.js";
 import { findScriptlet, type ScriptletCall } from "../scriptlets/index.js";
 import { tryRegex } from "../util.js";
 
@@ -203,9 +204,17 @@ export class CosmeticEngine {
       return;
     }
     this.stats.scriptlets++;
+    // A `war:` argument names a redirect resource, which the page doesn't
+    // have: its text goes with the call.
+    let resources: Record<string, string> | undefined;
+    for (const arg of rule.args) {
+      if (!arg.startsWith("war:")) continue;
+      const body = findResource(arg.slice(4))?.body;
+      if (typeof body === "string") (resources ??= {})[arg.slice(4)] = body;
+    }
     file(
       rule.hosts.include,
-      { id, name, args: rule.args },
+      { id, name, args: rule.args, ...(resources && { resources }) },
       (host, value) => push(this.scriptlets, host, value),
       this.scriptletRegex,
     );
@@ -286,12 +295,12 @@ export class CosmeticEngine {
     );
     const calls = new Map<string, ScriptletCall>();
     if (!liftedCalls.has("")) {
-      for (const { id, name, args } of this.lookUp(
+      for (const { id, ...call } of this.lookUp(
         hostname,
         this.scriptlets,
         this.scriptletRegex,
       )) {
-        if (!liftedCalls.has(id)) calls.set(id, { name, args });
+        if (!liftedCalls.has(id)) calls.set(id, call);
       }
     }
 

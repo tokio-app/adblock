@@ -56,7 +56,7 @@ function regexFor(rule: NetworkRule): RegExp | null {
 }
 
 /** Whether a hostname is `suffix` or a subdomain of it. */
-export function hostnameEndsWith(hostname: string, suffix: string): boolean {
+function hostnameEndsWith(hostname: string, suffix: string): boolean {
   return (
     hostname === suffix ||
     (hostname.endsWith(suffix) &&
