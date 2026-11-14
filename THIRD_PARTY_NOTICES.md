@@ -30,6 +30,8 @@ Development tools (TypeScript, Vitest, oxlint, Prettier and the rest of `devDepe
 
 The library downloads filter lists from these hosts when the host app asks it to. None of them is covered by this library's license. Each list belongs to its authors, is subject to its own license, and can change or stop being served at any time. The library downloads them on the user's machine and doesn't redistribute them.
 
+It also downloads Mozilla's **Public Suffix List** (<https://publicsuffix.org>, MPL-2.0) from `publicsuffix.org`, to tell a site from its subdomains. The list is data read by this library's own code; it isn't included in the repository or in the package.
+
 The default lists (`DEFAULT_LISTS`) are the ones uBlock Origin enables by default:
 
 | List                                     | Authors                                                  | License                                            | Downloaded from                                                                            |

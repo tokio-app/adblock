@@ -2,6 +2,7 @@
 // how many rules of each kind parse, and every unsupported syntax with its
 // count. Opt-in: it needs the network. The lists are other people's work under
 // their own licenses: read them as data, never commit them or a line of them.
+import { PUBLIC_SUFFIX_LIST_URLS } from "../../src/engine.js";
 import { DEFAULT_LISTS } from "../../src/lists/defaults.js";
 import { ListManager } from "../../src/lists/manager.js";
 import { FileStorage } from "../../src/lists/storage.js";
@@ -62,6 +63,19 @@ for (const list of DEFAULT_LISTS) {
     failed = true;
     console.error(`error: ${list.id}: ${toError(error).message}`);
   }
+}
+
+// yarn bench reads it from there too.
+try {
+  await manager.resource(
+    "public_suffix_list",
+    PUBLIC_SUFFIX_LIST_URLS,
+    { updateAfterDays: 19 },
+    args.includes("--force"),
+  );
+} catch (error) {
+  failed = true;
+  console.error(`error: public suffix list: ${toError(error).message}`);
 }
 
 console.log(formatReport(reports));

@@ -35,6 +35,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lists": "tsx scripts/lists/index.ts",
+    "bench": "node --expose-gc --import tsx scripts/bench/index.ts",
     "prepublishOnly": "yarn build",
     "prepare": "husky"
   },

@@ -18,6 +18,7 @@ function setup(routes: Parameters<typeof fetchStub>[0]) {
   const engine = new Engine({
     lists,
     storage: new MemoryStorage(),
+    publicSuffixListUrls: [],
     fetch,
     now: () => clock.now,
     onError: (error) => errors.push(error.message),
@@ -102,6 +103,7 @@ describe("Engine", () => {
     const fetch = fetchStub({ [A]: { body: "||a.example^" } });
     const manual = new Engine({
       lists: [lists[0]!],
+      publicSuffixListUrls: [],
       fetch,
       autoUpdate: false,
     });
@@ -117,5 +119,57 @@ describe("Engine", () => {
     engine.dispose();
     expect(vi.getTimerCount()).toBe(0);
     expect(await engine.update(true)).toBe(false);
+  });
+});
+
+describe("Engine and requests", () => {
+  const SUFFIXES = "https://suffixes.example/list.dat";
+  const request = { url: "https://ads.example/x.js", type: "script" } as const;
+
+  test("decides requests once ready, with the suffix list it downloaded", async () => {
+    const engine = new Engine({
+      lists: [lists[0]!],
+      fetch: fetchStub({
+        [A]: { body: "||ads.example^\n/3p.js$third-party" },
+        [SUFFIXES]: { body: "example\nco.example" },
+      }),
+      publicSuffixListUrls: [SUFFIXES],
+      autoUpdate: false,
+    });
+    // Nothing is blocked until the lists are in effect.
+    const empty = engine.network;
+    expect(empty.match(empty.request(request)).block).toBe(false);
+    await engine.ready;
+    const { network } = engine;
+    expect(network).not.toBe(empty);
+    expect(network.psl.loaded).toBe(true);
+    expect(network.match(network.request(request)).block).toBe(true);
+    // The list says a.co.example and b.co.example are different sites.
+    expect(
+      network.match(
+        network.request({
+          url: "https://b.co.example/3p.js",
+          type: "script",
+          sourceUrl: "https://a.co.example/",
+        }),
+      ).block,
+    ).toBe(true);
+  });
+
+  test("without the suffix list it reports and guesses", async () => {
+    const errors: string[] = [];
+    const engine = new Engine({
+      lists: [lists[0]!],
+      fetch: fetchStub({ [A]: { body: "||ads.example^" } }),
+      publicSuffixListUrls: [SUFFIXES],
+      autoUpdate: false,
+      onError: (error) => errors.push(error.message),
+    });
+    await engine.ready;
+    expect(errors).toEqual([`Couldn't download ${SUFFIXES}: HTTP 404`]);
+    expect(engine.network.psl.loaded).toBe(false);
+    expect(engine.network.match(engine.network.request(request)).block).toBe(
+      true,
+    );
   });
 });

@@ -1,5 +1,9 @@
 export { ADBLOCK_SCHEME, adblockScheme } from "./electron/scheme.js";
-export { Engine, type EngineOptions } from "./engine.js";
+export {
+  Engine,
+  PUBLIC_SUFFIX_LIST_URLS,
+  type EngineOptions,
+} from "./engine.js";
 export { DEFAULT_LISTS } from "./lists/defaults.js";
 export {
   ListManager,
@@ -14,5 +18,18 @@ export {
   type ListStorage,
   type StoredResource,
 } from "./lists/storage.js";
+export {
+  NetworkEngine,
+  type Decision,
+  type NetworkEngineOptions,
+  type NetworkStats,
+  type ResponseDecision,
+} from "./network/engine.js";
+export {
+  Request,
+  type RequestInfo,
+  type RequestType,
+} from "./network/request.js";
+export { PublicSuffixList } from "./psl/psl.js";
 export { parseList, type ParsedList, type ParseStats } from "./parser/index.js";
 export type * from "./parser/types.js";

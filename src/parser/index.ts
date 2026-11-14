@@ -94,7 +94,7 @@ export function parseLine(
   context: ParseContext,
   emit: (parsed: ParsedLine) => void,
 ): void {
-  const line = raw.trim();
+  let line = raw.trim();
   const first = line.charCodeAt(0);
   if (
     line === "" ||
@@ -105,6 +105,10 @@ export function parseLine(
     emit(COMMENT);
     return;
   }
+  // A line cut out of a list's text keeps the whole text in memory, and so
+  // does every string cut out of the line: parse a copy. (V8 copies anything
+  // shorter than 13 characters by itself.)
+  if (line.length >= 13) line = Buffer.from(line).toString();
   const hosts = HOSTS_LINE.exec(line);
   if (hosts !== null) {
     for (const name of hosts[1]!.split(/\s+/)) {
