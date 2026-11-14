@@ -23,6 +23,13 @@
       "rules": {
         "typescript/no-unsafe-type-assertion": "off"
       }
+    },
+    {
+      "files": ["src/scriptlets/**", "src/resources/**", "src/content/**"],
+      "rules": {
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/unbound-method": "off"
+      }
     }
   ]
 }

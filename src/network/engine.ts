@@ -15,6 +15,7 @@ import {
   type NetworkRule,
 } from "../parser/types.js";
 import { PublicSuffixList } from "../psl/psl.js";
+import { findResource } from "../resources/index.js";
 import { tryRegex } from "../util.js";
 import { FilterIndex } from "./filterIndex.js";
 import {
@@ -34,7 +35,7 @@ export interface NetworkEngineOptions {
   /**
    * Gives a redirect resource's own name from the name or alias a filter
    * uses, or undefined when there is no such resource: the filter is then
-   * discarded, as uBlock Origin does.
+   * discarded, as uBlock Origin does. Defaults to the library's resources.
    */
   resource?: (token: string) => string | undefined;
 }
@@ -185,7 +186,7 @@ export class NetworkEngine {
 
   constructor(options: NetworkEngineOptions = {}) {
     this.psl = options.psl ?? new PublicSuffixList();
-    this.resource = options.resource ?? ((token) => token);
+    this.resource = options.resource ?? ((token) => findResource(token)?.name);
   }
 
   /** Adds a list's network rules. They take effect at `finalize()`. */

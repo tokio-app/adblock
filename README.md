@@ -13,7 +13,9 @@ What works so far:
 
 - Deciding what happens to a request: block, exception and `important` filters with all their options, `badfilter`, redirect directives, `removeparam`, `urlskip`, `uritransform`, `csp`, `permissions` and `header`. With uBlock Origin's nine default lists it decides about 110,000 requests a second and holds about 41 MB.
 
-Not yet: the redirect resources themselves, cosmetic filtering, scriptlets and the Electron integration.
+- The redirect resources filters name, written from scratch: empty scripts, images, sounds and documents, and stand-ins for the IMA SDK, Google Publisher Tag, Google Analytics, Tag Manager and the rest. `noop-1s.mp4` is still an empty file.
+
+Not yet: cosmetic filtering, scriptlets and the Electron integration.
 
 ## License
 

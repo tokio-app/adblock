@@ -80,6 +80,10 @@ console.log(
 console.log(
   `public suffix list    ${engine.psl.loaded ? "loaded" : "missing: guessing"}`,
 );
+const unknown = Object.entries(engine.stats.unknownResources);
+console.log(
+  `unknown resources     ${unknown.length === 0 ? "none" : unknown.map(([name, count]) => `${name} (${count})`).join(", ")}`,
+);
 for (const [kind, filed] of Object.entries(engine.describe())) {
   console.log(`  ${kind.padEnd(10)} ${filed}`);
 }

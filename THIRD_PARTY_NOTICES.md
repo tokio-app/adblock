@@ -19,6 +19,7 @@ The filter syntax and the behavior of scriptlets and redirect resources come fro
 - **Adblock Plus's filter documentation** (<https://help.adblockplus.org/hc/en-us/articles/360062733293-How-to-write-filters>).
 - **AdGuard's filter documentation** (<https://adguard.com/kb/general/ad-filtering/create-own-filters/>), for the options uBlock Origin's wiki defers to it for.
 - **MDN** and the **Electron** and **Chromium** documentation, for the web and Electron APIs.
+- **The public developer documentation of the scripts the redirect resources stand in for**, for the names those scripts define: Google's IMA SDK for HTML5 reference (<https://developers.google.com/interactive-media-ads/docs/sdks/html5/client-side/reference/js/google.ima>), the Google Publisher Tag reference (<https://developers.google.com/publisher-tag/reference>), Google Analytics' `analytics.js` and `ga.js` references, AdSense's and Google Tag Manager's documentation, FingerprintJS's and FuckAdBlock's READMEs, the Sensors Data web API (<https://docs.sensorsdata.com>), and the file format specifications (GIF89a, PNG, MPEG audio, VAST, VMAP). Each stand-in is our own code that defines those names and does nothing; no code from those scripts is included.
 
 The filter lists were also read as data, to measure which syntax, scriptlets and redirect resources real rules use. No line of a filter list is included in this repository or in the package.
 

@@ -31,5 +31,10 @@ export {
   type RequestType,
 } from "./network/request.js";
 export { PublicSuffixList } from "./psl/psl.js";
+export {
+  RESOURCES,
+  findResource,
+  type RedirectResource,
+} from "./resources/index.js";
 export { parseList, type ParsedList, type ParseStats } from "./parser/index.js";
 export type * from "./parser/types.js";

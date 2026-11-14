@@ -46,6 +46,8 @@ src/
                       filterIndex.ts (rules filed by hostname, token and site), tokens.ts, pattern.ts (matching a rule),
                       request.ts (what filters ask about a request), modifiers.ts (removeparam, urlskip, uritransform)
   psl/                psl.ts (PublicSuffixList: registrable domains and entities)
+  resources/          index.ts (RESOURCES, findResource), binary.ts (GIF, PNG, MP3), documents.ts (HTML, VAST, VMAP),
+                      defusers.ts (stand-ins that are scriptlets too), ima.ts (the IMA SDK), surrogates.ts (the others)
   electron/           scheme.ts (the scheme entry host apps register)
 test/
   setup.ts            runs before every test file
@@ -65,6 +67,7 @@ Notes for one area live in `.claude/rules/<topic>.md`. Claude Code loads each on
 
 - `lists-parser.md`: the default lists, downloads and expiry, `!#if`, and the parser's choices where the wiki is silent
 - `network.md`: precedence, how rules are filed, the Public Suffix List, and what `yarn bench` should print
+- `resources.md`: what a redirect resource must be, where each one's behavior comes from, and the ones that are guesses
 
 A rule holds what its reader can't get quickly from the code: the user's calls, marked "(the user's call)"; gotchas, with the reason the obvious way breaks; contracts that other code or other repos depend on; and couplings between files. It leaves out what reading the code shows, history, and what AGENTS.md or another rule already says. When a change alters what a rule says, update the rule with it. A new area gets its own rule with `paths`.
 
@@ -142,7 +145,7 @@ Keep these stable; host apps depend on them:
 | 0   | Scaffold                      | done    |
 | 1   | Lists and parser              | done    |
 | 2   | Network engine                | done    |
-| 3   | Redirect resources            | pending |
+| 3   | Redirect resources            | done    |
 | 4   | Cosmetic engine               | pending |
 | 5   | Scriptlets                    | pending |
 | 6   | Electron integration          | pending |
