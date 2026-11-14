@@ -173,3 +173,35 @@ describe("Engine and requests", () => {
     );
   });
 });
+
+describe("Engine and documents", () => {
+  test("gives a document its cosmetics, with its exceptions applied", async () => {
+    const engine = new Engine({
+      lists: [lists[0]!],
+      fetch: fetchStub({
+        [A]: {
+          body: [
+            "a.example##.ad",
+            "##[data-ad]",
+            "a.example##+js(set, ads, false)",
+            "@@||a.example/plain/$ghide",
+          ].join("\n"),
+        },
+      }),
+      publicSuffixListUrls: [],
+      autoUpdate: false,
+    });
+    await engine.ready;
+    expect(engine.document("https://www.a.example/page")).toEqual({
+      css: ".ad{display:none!important;}\n[data-ad]{display:none!important;}",
+      procedural: [],
+      scriptlets: [{ name: "set-constant", args: ["ads", "false"] }],
+      generic: true,
+    });
+    expect(engine.document("https://www.a.example/plain/x")).toMatchObject({
+      css: ".ad{display:none!important;}",
+      generic: false,
+    });
+    expect(engine.document("https://b.example/").scriptlets).toEqual([]);
+  });
+});

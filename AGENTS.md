@@ -46,15 +46,23 @@ src/
                       filterIndex.ts (rules filed by hostname, token and site), tokens.ts, pattern.ts (matching a rule),
                       request.ts (what filters ask about a request), modifiers.ts (removeparam, urlskip, uritransform)
   psl/                psl.ts (PublicSuffixList: registrable domains and entities)
+  cosmetic/           engine.ts (CosmeticEngine: a document's stylesheet, procedural filters, scriptlets and the
+                      response headers to drop)
+  content/            what runs in the page from the preload: cosmetics.ts (applies a document's cosmetics and asks for
+                      the generic ones), procedural.ts (runs procedural filters)
+  scriptlets/         index.ts (SCRIPTLETS, findScriptlet), runner.ts (runs a page's scriptlets), helpers.ts (what they
+                      share), types.ts, and the scriptlets by family
   resources/          index.ts (RESOURCES, findResource), binary.ts (GIF, PNG, MP3), documents.ts (HTML, VAST, VMAP),
                       defusers.ts (stand-ins that are scriptlets too), ima.ts (the IMA SDK), surrogates.ts (the others)
   electron/           scheme.ts (the scheme entry host apps register)
 test/
   setup.ts            runs before every test file
-  helpers/            fetchStub.ts (a fetch that answers from a table and records requests)
+  helpers/            fetchStub.ts (a fetch that answers from a table and records requests), page.ts (a jsdom page that
+                      gets the bundled scriptlets, as a real page does)
 scripts/
   lists/              yarn lists: index.ts (downloads and parses the default lists), report.ts (what it prints)
   bench/              yarn bench: index.ts
+  build/              bundle.ts (the scriptlets as one self-contained function)
 ```
 
 `THIRD_PARTY_NOTICES.md` credits the documentation the library was written from and lists the services it downloads from. `tsconfig.json` covers `src/`, `test/`, `scripts/` and `vitest.config.ts` for the typecheck and type-aware lint; `tsconfig.build.json` extends it to emit `src/` only (it holds `rootDir`, and leaves out the tests). Generated or downloaded, don't edit: `dist/`, `coverage/`, `lists/`, `reports/`. The package ships only `dist/`, `THIRD_PARTY_NOTICES.md`, `LICENSE`, `README.md` and `package.json` (`files` in `package.json`).
@@ -68,6 +76,7 @@ Notes for one area live in `.claude/rules/<topic>.md`. Claude Code loads each on
 - `lists-parser.md`: the default lists, downloads and expiry, `!#if`, and the parser's choices where the wiki is silent
 - `network.md`: precedence, how rules are filed, the Public Suffix List, and what `yarn bench` should print
 - `resources.md`: what a redirect resource must be, where each one's behavior comes from, and the ones that are guesses
+- `cosmetic.md`: what a document gets, how the page applies it, and the operators' choices where the wiki is silent
 
 A rule holds what its reader can't get quickly from the code: the user's calls, marked "(the user's call)"; gotchas, with the reason the obvious way breaks; contracts that other code or other repos depend on; and couplings between files. It leaves out what reading the code shows, history, and what AGENTS.md or another rule already says. When a change alters what a rule says, update the rule with it. A new area gets its own rule with `paths`.
 
@@ -146,7 +155,7 @@ Keep these stable; host apps depend on them:
 | 1   | Lists and parser              | done    |
 | 2   | Network engine                | done    |
 | 3   | Redirect resources            | done    |
-| 4   | Cosmetic engine               | pending |
+| 4   | Cosmetic engine               | done    |
 | 5   | Scriptlets                    | pending |
 | 6   | Electron integration          | pending |
 | 7   | Smoke run against a real page | pending |

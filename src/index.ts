@@ -1,3 +1,8 @@
+export {
+  CosmeticEngine,
+  type CosmeticStats,
+  type DocumentCosmetics,
+} from "./cosmetic/engine.js";
 export { ADBLOCK_SCHEME, adblockScheme } from "./electron/scheme.js";
 export {
   Engine,

@@ -1,3 +1,4 @@
+import { CosmeticEngine, type DocumentCosmetics } from "./cosmetic/engine.js";
 import { DEFAULT_LISTS } from "./lists/defaults.js";
 import {
   ListManager,
@@ -56,6 +57,11 @@ export class Engine {
    */
   network = new NetworkEngine();
   /**
+   * Decides what a document gets: selectors to hide, procedural filters and
+   * scriptlets. Replaced when the lists change, like `network`.
+   */
+  cosmetic = new CosmeticEngine();
+  /**
    * Resolves once the lists that could be loaded are in effect. It never
    * rejects: a list that can't be loaded is reported to `onError` and left
    * out.
@@ -104,6 +110,20 @@ export class Engine {
     });
   }
 
+  /**
+   * What the document at `url` gets as it starts loading: its scriptlets,
+   * its stylesheet and its procedural filters, with the `generichide`,
+   * `specifichide` and `elemhide` exceptions for it applied. `topUrl` is the
+   * top document's, when this one is in a frame.
+   */
+  document(url: string, topUrl?: string): DocumentCosmetics {
+    const request = this.network.request({ url, type: "document", topUrl });
+    return this.cosmetic.forDocument(
+      request.hostname,
+      this.network.cosmeticSwitches(request),
+    );
+  }
+
   /** Stops the updates. The rules stay in effect. */
   dispose(): void {
     this.disposed = true;
@@ -138,9 +158,9 @@ export class Engine {
       loaded.some((list) => list?.changed);
     if (changed) {
       const stats: Record<string, ParseStats> = {};
-      const network = new NetworkEngine({
-        psl: new PublicSuffixList(suffixes?.resource.text),
-      });
+      const psl = new PublicSuffixList(suffixes?.resource.text);
+      const network = new NetworkEngine({ psl });
+      const cosmetic = new CosmeticEngine({ psl });
       for (const list of loaded) {
         if (list === undefined) continue;
         const rules = emptyParsedList();
@@ -157,10 +177,12 @@ export class Engine {
         }
         stats[list.id] = rules.stats;
         network.add(rules.network);
+        cosmetic.add(rules);
       }
       const steps = network.finalizing();
       while (steps.next().done !== true) await nextTurn();
       this.network = network;
+      this.cosmetic = cosmetic;
       this.stats = stats;
       this.built = true;
     }

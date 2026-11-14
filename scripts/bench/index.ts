@@ -4,6 +4,7 @@
 import { DEFAULT_LISTS } from "../../src/lists/defaults.js";
 import { ListManager } from "../../src/lists/manager.js";
 import { FileStorage } from "../../src/lists/storage.js";
+import { CosmeticEngine } from "../../src/cosmetic/engine.js";
 import { NetworkEngine } from "../../src/network/engine.js";
 import type { RequestInfo, RequestType } from "../../src/network/request.js";
 import { emptyParsedList, parseInto } from "../../src/parser/index.js";
@@ -71,11 +72,26 @@ console.log(
   `file the rules        ${ms(started)} (${engine.stats.rules} rules, ` +
     `${engine.stats.badfiltered} removed by badfilter)`,
 );
+started = performance.now();
+const cosmetic = new CosmeticEngine({ psl: engine.psl });
+for (const rules of parsed) cosmetic.add(rules);
+const { stats } = cosmetic;
+console.log(
+  `file the cosmetics    ${ms(started)} (${stats.specific} specific, ` +
+    `${stats.genericByName} generic by class or id, ` +
+    `${stats.genericAlways} generic for every page, ` +
+    `${stats.procedural} procedural, ${stats.scriptlets} scriptlets)`,
+);
 parsed.length = 0;
 lists.length = 0;
 console.log(
   `heap held             ${(heap() - heapBefore).toFixed(0)} MB` +
     (globalThis.gc ? "" : " (inexact: run with --expose-gc)"),
+);
+started = performance.now();
+const page = cosmetic.forDocument("www.site7.example");
+console.log(
+  `a document's cosmetics ${ms(started)} (${(page.css.length / 1024).toFixed(0)} kB of CSS)`,
 );
 console.log(
   `public suffix list    ${engine.psl.loaded ? "loaded" : "missing: guessing"}`,
@@ -133,21 +149,25 @@ for (let n = 0; n < REQUESTS; n++) {
   }
 }
 
-for (const round of ["warm-up", "measured"]) {
-  let blocked = 0;
-  let rewritten = 0;
+// The best of a few rounds: the machine does other things too.
+let best = Infinity;
+let blocked = 0;
+let rewritten = 0;
+for (let round = 0; round < 4; round++) {
+  blocked = 0;
+  rewritten = 0;
   started = performance.now();
   for (const info of requests) {
     const request = engine.request(info);
     if (engine.match(request).block) blocked++;
     else if (engine.rewrite(request) !== undefined) rewritten++;
   }
-  const elapsed = performance.now() - started;
-  if (round === "warm-up") continue;
-  console.log(
-    `decide ${REQUESTS} requests  ${elapsed.toFixed(0)} ms: ` +
-      `${Math.round((REQUESTS / elapsed) * 1000)} requests/s, ` +
-      `${((elapsed / REQUESTS) * 1000).toFixed(1)} µs each ` +
-      `(${blocked} blocked, ${rewritten} rewritten)`,
-  );
+  // The first round warms the engine up.
+  if (round > 0) best = Math.min(best, performance.now() - started);
 }
+console.log(
+  `decide ${REQUESTS} requests  ${best.toFixed(0)} ms: ` +
+    `${Math.round((REQUESTS / best) * 1000)} requests/s, ` +
+    `${((best / REQUESTS) * 1000).toFixed(1)} µs each ` +
+    `(${blocked} blocked, ${rewritten} rewritten)`,
+);

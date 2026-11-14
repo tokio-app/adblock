@@ -15,7 +15,9 @@ What works so far:
 
 - The redirect resources filters name, written from scratch: empty scripts, images, sounds and documents, and stand-ins for the IMA SDK, Google Publisher Tag, Google Analytics, Tag Manager and the rest. `noop-1s.mp4` is still an empty file.
 
-Not yet: cosmetic filtering, scriptlets and the Electron integration.
+- Deciding what a document gets: a stylesheet for its specific and generic cosmetic filters, with exceptions and `generichide`, `specifichide` and `elemhide`, and the procedural filters (`:has-text()`, `:upward()`, `:matches-css()`, `:xpath()`, `:remove()` and the rest) for the page-side code to run.
+
+Not yet: most scriptlets, and the Electron integration that puts all of this in a session.
 
 ## License
 
