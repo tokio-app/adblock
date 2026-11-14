@@ -1,0 +1,74 @@
+{
+  "name": "@tokioapp/adblock",
+  "version": "0.0.0",
+  "description": "A clean-room, MIT content blocker for Electron that applies uBlock Origin's filter lists: network, cosmetic, procedural and scriptlet rules, with redirect resources.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "sideEffects": false,
+  "engines": {
+    "node": ">=24"
+  },
+  "packageManager": "yarn@1.22.22",
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "node -e \"for (const dir of ['dist', 'coverage']) fs.rmSync(dir, { recursive: true, force: true })\"",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "oxlint --type-aware",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepublishOnly": "yarn build",
+    "prepare": "husky"
+  },
+  "author": "Akuqt",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tokio-app/adblock.git"
+  },
+  "keywords": [
+    "adblock",
+    "content-blocker",
+    "electron",
+    "ublock-origin",
+    "filter-lists",
+    "tokio"
+  ],
+  "bugs": {
+    "url": "https://github.com/tokio-app/adblock/issues"
+  },
+  "homepage": "https://tokio.ialfaro.com",
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.4",
+    "@types/node": "^24.19.2",
+    "@vitest/coverage-v8": "^5.0.5",
+    "fallow": "^3.34.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "oxlint": "^1.89.0",
+    "oxlint-tsgolint": "^7.0.2004",
+    "prettier": "^3.9.10",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vite": "^7.3.7",
+    "vitest": "^5.0.5"
+  }
+}

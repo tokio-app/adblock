@@ -1,0 +1,9 @@
+node_modules
+dist
+coverage
+# Downloaded filter lists (GPL-3.0 and CC BY-SA data) and reports: never committed.
+/lists/
+/reports/
+.fallow/
+*.log
+.DS_Store
