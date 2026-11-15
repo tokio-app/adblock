@@ -51,7 +51,7 @@ What you need to know as the host app:
 - **Network filters:** every pattern form and option uBlock Origin documents: types, `1p` and `3p`, `strict1p` and `strict3p`, `domain`, `to`, `top`, `denyallow`, `method`, `header`, `important`, `badfilter`, `match-case`, exceptions, and the modifiers `redirect`, `redirect-rule`, `removeparam`, `csp`, `permissions`, `urlskip`, `uritransform`, `inline-script` and `inline-font`.
 - **Redirect resources:** empty scripts, styles and documents, transparent images, silent sounds, and stand-ins for the IMA SDK, Google Publisher Tag, Google Analytics, Tag Manager, AdSense and others.
 - **Cosmetic filters:** specific, entity and generic filters, exceptions, `generichide`, `specifichide` and `elemhide`, `:style()`, and the procedural operators (`:has-text()`, `:upward()`, `:matches-css()`, `:matches-path()`, `:xpath()`, `:remove()`, `:remove-attr()` and the rest).
-- **Scriptlets:** 94, every one uBlock Origin's default lists use but six that it doesn't document. `trusted-` scriptlets only run from trusted lists, which by default are uBlock Origin's own.
+- **Scriptlets:** 95, every one uBlock Origin's default lists use but six that it doesn't document. `trusted-` scriptlets only run from trusted lists, which by default are uBlock Origin's own.
 
 With the nine default lists (307,000 lines) it is ready about a second and a half after it finds them in the storage, holds about 63 MB, and decides between 55,000 and 110,000 requests a second, depending on what else the machine is doing.
 
