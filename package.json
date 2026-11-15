@@ -1,6 +1,6 @@
 {
   "name": "@tokioapp/adblock",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A clean-room, MIT content blocker for Electron that applies uBlock Origin's filter lists: network, cosmetic, procedural and scriptlet rules, with redirect resources.",
   "type": "module",
   "main": "./dist/index.js",
