@@ -1,12 +1,16 @@
 # Tokio Adblock
 
-A content blocker for Electron that applies [uBlock Origin](https://github.com/gorhill/uBlock)'s filter lists inside an Electron session: network filters, cosmetic and procedural cosmetic filters, scriptlet injection and redirect resources. It is written from scratch, MIT-licensed, and has no runtime dependency. It is the blocker behind [Tokio](https://tokio.ialfaro.com)'s music player.
+A content blocker for Electron that applies [uBlock Origin](https://github.com/gorhill/uBlock)'s filter lists inside an Electron session: network filters, cosmetic and procedural cosmetic filters, scriptlet injection and redirect resources. It is written from scratch, MIT-licensed, and has no runtime dependency. It is made for [Tokio](https://tokio.ialfaro.com)'s music player.
 
 ## Status
 
-In development. It isn't on npm yet, and the API can still change.
+In development: the API can still change.
 
 ## Use
+
+```sh
+yarn add @tokioapp/adblock
+```
 
 Electron 35 or later, Node 24 or later. The package is ESM only and ships its TypeScript types.
 
