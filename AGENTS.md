@@ -11,7 +11,7 @@ Stack: Node >= 24, TypeScript 7, Vitest (on Vite 7), Yarn 1. The host app runs E
 ## Commands
 
 ```sh
-yarn build             # tsc -p tsconfig.build.json: dist/ (JS and .d.ts, no maps)
+yarn build             # tsc -p tsconfig.build.json: dist/ (JS and .d.ts, no maps), then dist/preload.cjs
 yarn clean             # delete dist/ and coverage/
 yarn test              # vitest run (yarn test:watch to watch)
 yarn test:coverage     # vitest with a coverage report in coverage/ (text + lcov)
@@ -20,6 +20,7 @@ yarn lint              # oxlint --type-aware, fails on any warning
 yarn format            # prettier --write . (yarn format:check only checks)
 yarn lists             # download the default lists into lists/ and print what parses (opt-in, needs network)
 yarn bench             # build the engine from lists/ and print its times, heap and requests per second
+yarn smoke [url]       # build, launch Electron on a page with the default lists, write reports/smoke.json (opt-in, needs network)
 ```
 
 Verify changes with `yarn test`, `yarn typecheck`, `yarn lint`, `yarn format:check` and `yarn build`. The `verify` skill says when the opt-in runs are needed too.
@@ -48,7 +49,8 @@ src/
   psl/                psl.ts (PublicSuffixList: registrable domains and entities)
   cosmetic/           engine.ts (CosmeticEngine: a document's stylesheet, procedural filters, scriptlets and the
                       response headers to drop)
-  content/            what runs in the page from the preload: cosmetics.ts (applies a document's cosmetics and asks for
+  content/            what runs in the page from the preload: preload.ts (the preload's entry), mainWorld.ts (the
+                      scriptlets, for the page's own world), cosmetics.ts (applies a document's cosmetics and asks for
                       the generic ones), procedural.ts (runs procedural filters)
   scriptlets/         index.ts (SCRIPTLETS, findScriptlet), runner.ts (runs a page's scriptlets), helpers.ts (what they
                       share), types.ts, and the scriptlets by family: abort.ts, setConstant.ts, timers.ts, events.ts,
@@ -56,16 +58,21 @@ src/
                       with jsonPath.ts)
   resources/          index.ts (RESOURCES, findResource), binary.ts (GIF, PNG, MP3), documents.ts (HTML, VAST, VMAP),
                       defusers.ts (stand-ins that are scriptlets too), ima.ts (the IMA SDK), surrogates.ts (the others)
-  electron/           scheme.ts (the scheme entry host apps register)
+  electron/           blocker.ts (ElectronBlocker: enable and disable a session, the webRequest listeners, the scheme's
+                      handler, the IPC with the preload), channels.ts (the IPC channel names), scheme.ts (the scheme
+                      entry host apps register)
 test/
   setup.ts            runs before every test file
   helpers/            fetchStub.ts (a fetch that answers from a table and records requests), page.ts (a jsdom page that
                       gets the bundled scriptlets, as a real page does), fakes.ts (what jsdom lacks: fetch, an XHR
-                      helper)
+                      helper), electron.ts (fakes of Electron's session, protocol, webRequest and ipcMain)
 scripts/
   lists/              yarn lists: index.ts (downloads and parses the default lists), report.ts (what it prints)
   bench/              yarn bench: index.ts
-  build/              bundle.ts (the scriptlets as one self-contained function)
+  build/              index.ts (writes dist/preload.cjs), bundle.ts (the scriptlets as one self-contained function, and
+                      the preload as one CommonJS file)
+  smoke/              yarn smoke: index.ts (launches Electron and prints the summary), main.mjs (what runs in
+                      Electron), summary.ts (the summary and the verdict)
 ```
 
 `THIRD_PARTY_NOTICES.md` credits the documentation the library was written from and lists the services it downloads from. `tsconfig.json` covers `src/`, `test/`, `scripts/` and `vitest.config.ts` for the typecheck and type-aware lint; `tsconfig.build.json` extends it to emit `src/` only (it holds `rootDir`, and leaves out the tests). Generated or downloaded, don't edit: `dist/`, `coverage/`, `lists/`, `reports/`. The package ships only `dist/`, `THIRD_PARTY_NOTICES.md`, `LICENSE`, `README.md` and `package.json` (`files` in `package.json`).
@@ -81,6 +88,7 @@ Notes for one area live in `.claude/rules/<topic>.md`. Claude Code loads each on
 - `resources.md`: what a redirect resource must be, where each one's behavior comes from, and the ones that are guesses
 - `cosmetic.md`: what a document gets, how the page applies it, and the operators' choices where the wiki is silent
 - `scriptlets.md`: where scriptlets run and what that forbids, how to write and test one, and the ones not implemented
+- `electron.md`: what `enable()` installs, the scheme, the preload, who a request comes from, and `yarn smoke`
 
 A rule holds what its reader can't get quickly from the code: the user's calls, marked "(the user's call)"; gotchas, with the reason the obvious way breaks; contracts that other code or other repos depend on; and couplings between files. It leaves out what reading the code shows, history, and what AGENTS.md or another rule already says. When a change alters what a rule says, update the rule with it. A new area gets its own rule with `paths`.
 
@@ -143,6 +151,9 @@ What the Electron spike settled (Electron 45, against `https://music.youtube.com
 Keep these stable; host apps depend on them:
 
 - the public API exported from `src/index.ts`. A breaking change is a `feat!:` and a new minor (0.x) or major version
+- the scheme's name, `tokio-adblock`, and the `adblockScheme` entry: host apps register it by that name
+- the preload's export path, `@tokioapp/adblock/preload` (`dist/preload.cjs`): host apps resolve it
+- the ids of `DEFAULT_LISTS`: they name the lists in the host's storage, so a new id downloads the list again and leaves the old copy behind
 
 ## Writing the docs
 
@@ -153,13 +164,15 @@ Keep these stable; host apps depend on them:
 
 ## Milestones
 
-| #   | Milestone                     | Status  |
-| --- | ----------------------------- | ------- |
-| 0   | Scaffold                      | done    |
-| 1   | Lists and parser              | done    |
-| 2   | Network engine                | done    |
-| 3   | Redirect resources            | done    |
-| 4   | Cosmetic engine               | done    |
-| 5   | Scriptlets                    | done    |
-| 6   | Electron integration          | pending |
-| 7   | Smoke run against a real page | pending |
+| #   | Milestone                     | Status |
+| --- | ----------------------------- | ------ |
+| 0   | Scaffold                      | done   |
+| 1   | Lists and parser              | done   |
+| 2   | Network engine                | done   |
+| 3   | Redirect resources            | done   |
+| 4   | Cosmetic engine               | done   |
+| 5   | Scriptlets                    | done   |
+| 6   | Electron integration          | done   |
+| 7   | Smoke run against a real page | done   |
+
+What is left is in each area's rule: the redirect resources that are guesses and `noop-1s.mp4` (`resources.md`), the scriptlets that aren't documented (`scriptlets.md`), what Electron can't apply (`lists-parser.md`), and no page for a blocked document (`electron.md`).

@@ -3,7 +3,9 @@
   "entry": [
     "src/index.ts",
     "src/scriptlets/runner.ts",
+    "src/content/preload.ts",
     "scripts/*/index.ts",
+    "scripts/smoke/main.mjs",
     "vitest.config.ts"
   ],
   "ignorePatterns": ["lists/**", "reports/**"],
@@ -12,5 +14,6 @@
     "mode": "strict",
     "ignore": ["**/*.js", "package.json"]
   },
-  "rules": {}
+  "rules": {},
+  "ignoreDependencies": ["esbuild"]
 }

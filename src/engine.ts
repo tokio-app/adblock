@@ -124,6 +124,18 @@ export class Engine {
     );
   }
 
+  /**
+   * Whether a `popup` filter blocks a window the page at `openerUrl` wants
+   * to open at `url`. Nothing asks by itself: an app decides about new
+   * windows in its own `setWindowOpenHandler`, and can ask there.
+   */
+  blocksPopup(url: string, openerUrl: string): boolean {
+    const { network } = this;
+    return network.match(
+      network.request({ url, type: "popup", sourceUrl: openerUrl }),
+    ).block;
+  }
+
   /** Stops the updates. The rules stay in effect. */
   dispose(): void {
     this.disposed = true;

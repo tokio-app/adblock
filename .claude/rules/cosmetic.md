@@ -21,7 +21,7 @@ paths:
 
 ## In the page
 
-- **`src/content/` is bundled into the preload**: it imports types only from outside its folder. It takes what it needs from where it runs through `CosmeticsHost`, so tests run it in jsdom with a fake.
+- **`src/content/` is bundled into the preload** (the Electron rule says how): from outside its folder it imports types, the channel names (`src/electron/channels.ts`, which imports nothing) and the scriptlet runner, and nothing that needs Node. `cosmetics.ts` takes what it needs from where it runs through `CosmeticsHost`, so tests run it in jsdom with a fake.
 - A procedural filter marks its elements with an attribute no page uses (a random prefix), and a stylesheet rule hides or restyles what carries it. An element a filter no longer selects loses the mark. `:style()` gets an attribute of its own per declaration block.
 - One `MutationObserver` serves the procedural filters and the survey of classes and ids. Changes gather for `DELAY` ms. **An attribute change only reruns the filters that say `:watch-attr()`**, as the wiki describes; a change of the page's tree reruns them all. The marks' own attribute changes are skipped, or the observer would answer itself forever.
 - `:matches-path()` is checked at every run, not once: a page that navigates without loading (a single-page app) changes path under a running filter.

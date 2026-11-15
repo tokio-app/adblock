@@ -3,6 +3,11 @@ export {
   type CosmeticStats,
   type DocumentCosmetics,
 } from "./cosmetic/engine.js";
+export {
+  ElectronBlocker,
+  type BlockerCounts,
+  type ElectronBlockerOptions,
+} from "./electron/blocker.js";
 export { ADBLOCK_SCHEME, adblockScheme } from "./electron/scheme.js";
 export {
   Engine,

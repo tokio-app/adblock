@@ -205,3 +205,27 @@ describe("Engine and documents", () => {
     expect(engine.document("https://b.example/").scriptlets).toEqual([]);
   });
 });
+
+describe("Engine and popups", () => {
+  test("says whether a popup filter blocks a window a page opens", async () => {
+    const engine = new Engine({
+      lists: [lists[0]!],
+      fetch: fetchStub({
+        [A]: {
+          body: "||pop.example^$popup\n||ads.example^\n/landing$popup,domain=a.example",
+        },
+      }),
+      publicSuffixListUrls: [],
+      autoUpdate: false,
+    });
+    await engine.ready;
+    const opener = "https://www.a.example/";
+    expect(engine.blocksPopup("https://pop.example/win", opener)).toBe(true);
+    expect(engine.blocksPopup("https://x.example/landing", opener)).toBe(true);
+    expect(
+      engine.blocksPopup("https://x.example/landing", "https://b.example/"),
+    ).toBe(false);
+    // A filter without the popup type says nothing about new windows.
+    expect(engine.blocksPopup("https://ads.example/", opener)).toBe(false);
+  });
+});

@@ -10,6 +10,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./preload": "./dist/preload.cjs",
     "./package.json": "./package.json"
   },
   "files": [
@@ -25,7 +26,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && tsx scripts/build/index.ts",
     "clean": "node -e \"for (const dir of ['dist', 'coverage']) fs.rmSync(dir, { recursive: true, force: true })\"",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -36,6 +37,7 @@
     "format:check": "prettier --check .",
     "lists": "tsx scripts/lists/index.ts",
     "bench": "node --expose-gc --import tsx scripts/bench/index.ts",
+    "smoke": "yarn build && tsx scripts/smoke/index.ts",
     "prepublishOnly": "yarn build",
     "prepare": "husky"
   },
@@ -57,12 +59,16 @@
     "url": "https://github.com/tokio-app/adblock/issues"
   },
   "homepage": "https://tokio.ialfaro.com",
+  "peerDependencies": {
+    "electron": ">=35.0.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "^21.2.4",
     "@commitlint/config-conventional": "^21.2.4",
     "@types/jsdom": "^30.0.0",
     "@types/node": "^24.19.2",
     "@vitest/coverage-v8": "^5.0.5",
+    "electron": "^45.3.0",
     "esbuild": "^0.28.2",
     "fallow": "^3.34.1",
     "husky": "^9.1.7",
