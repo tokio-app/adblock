@@ -98,6 +98,7 @@ Procedures live in `.claude/skills/<name>/SKILL.md`. Claude Code offers each one
 
 **Other agents:** before doing one of these tasks, read its `SKILL.md`.
 
+- `release`: publish a version to npm, only when the user asks
 - `verify`: run the checks a change needs
 - `add-dependency`: add, upgrade or remove a package, with the license checks
 
@@ -135,7 +136,10 @@ What the Electron spike settled (Electron 45, against `https://music.youtube.com
 ## CI and releases
 
 - `ci.yml` (pull requests and `main`): Prettier check (Linux), lint, typecheck, tests and build, on Linux and Windows with Node 24. Linux runs the tests with coverage and uploads `coverage/` as an artifact. On pull requests, `commitlint` checks every commit message against `.commitlintrc`.
-- The repository is public on GitHub (`tokio-app/adblock`). Publishing isn't set up yet: no `publish.yml`, no `release` skill, and the user sets up npm trusted publishing. Never push without asking.
+- `publish.yml` runs on a `v<version>` tag matching `package.json`: format, lint, typecheck and tests, then `npm publish` through npm trusted publishing (no token; `prepublishOnly` builds) and a GitHub release with generated notes. Versions with a `-` (`0.2.0-beta.1`) publish under the `next` dist-tag and as a GitHub prerelease. A rerun skips what's already published.
+- The user sets up npm trusted publishing (package `@tokioapp/adblock`, repository `tokio-app/adblock`, workflow `publish.yml`). Releases publish directly, as the connector's do, not through `npm stage publish` (the user's call). Never push without asking.
+
+To release, use the `release` skill (`/release`).
 
 ## Conventions
 
