@@ -30,7 +30,7 @@ A scriptlet (`example.com##+js(name, arg, …)`) is a function that runs in the 
 
 ## Not implemented
 
-- In uBlock Origin's lists but not in its wiki, so there is nothing to write them from: `edit-object-on-setter`, `prevent-clipboard-write`, `mpegdash-prune`, `multiup`, `prevent-navigation`, `proxy-apply-config`. `yarn lists` prints the names without an implementation, with how many filters use each.
+- In uBlock Origin's lists but not in its wiki, so there is nothing to write them from, and they stay out (the user's call): `edit-object-on-setter`, `prevent-clipboard-write`, `mpegdash-prune`, `multiup`, `prevent-navigation`, `proxy-apply-config`. `yarn lists` prints the names without an implementation, with how many filters use each.
 - `overlay-buster`: the wiki only says it "gets rid of overlay dialogs". A guess could hide a page's real content, and no default list uses it.
 - The JSONPath of the `edit` suite (`network/jsonPath.ts`) reads RFC 9535 queries and the `v2:` prefix. It rejects the legacy syntax the wiki says to stop using, slices, `&&` and `||`, and function calls.
 

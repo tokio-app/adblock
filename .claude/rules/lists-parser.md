@@ -10,7 +10,7 @@ paths:
 
 ## Lists
 
-- `DEFAULT_LISTS` (`src/lists/defaults.ts`) are the lists uBlock Origin enables by default, with its ids, read from its published asset index, `https://raw.githubusercontent.com/gorhill/uBlock/master/assets/assets.json` (a data file: URLs and which lists are on). Each list's own URL comes first, then its CDN mirrors. A new default list or host goes in `THIRD_PARTY_NOTICES.md` too.
+- `DEFAULT_LISTS` (`src/lists/defaults.ts`) are the lists uBlock Origin enables by default, with its ids, read from its published asset index, `https://raw.githubusercontent.com/gorhill/uBlock/master/assets/assets.json` (a data file: URLs and which lists are on). Peter Lowe's list and the malware list (`urlhaus-1`) stay in, and a host app leaves out what it doesn't want (the user's call). Each list's own URL comes first, then its CDN mirrors. A new default list or host goes in `THIRD_PARTY_NOTICES.md` too.
 - Only uBlock Origin's own lists are `trusted`. A trusted list can run arbitrary code in pages (`trusted-*` scriptlets) and send navigations elsewhere (`urlskip=`), so never mark a third-party list trusted by default.
 - A sub-list (`!#include`) is downloaded from the folder of the URL that served its list, so a list from a mirror gets the mirror's sub-lists. Its path can't leave that folder (`isSafeInclude`). It is stored under `<list id>/<path>`.
 - A failed download never throws past a stored copy: the copy stays in effect and the list is tried again an hour later. `ListManager.load` rejects only when a list is neither stored nor downloadable.
@@ -37,6 +37,6 @@ Choices where the wiki doesn't pin the behavior down, or where the obvious readi
 - A selector list with procedural parts (`.a, .b:has-text(x)`) gives one rule per procedural part and one for the plain parts. The wiki says such lists aren't supported, but uBlock Origin's own lists have them.
 - `##selector { declarations }` is read like AdGuard's `#$#` (EasyList writes it that way), and `#%#//scriptlet(...)` like `##+js(...)`.
 - Plain selectors are only checked for balance, braces, comments and control characters (`splitOperators`, `plainSelectorError`): an unbalanced `[` or `(` would swallow the rules after it in a stylesheet. Whether a selector is valid CSS is left to the page, where each selector gets its own rule so a bad one only loses itself.
-- `requestheader=` appears once in uBlock Origin's lists and isn't in the wiki: it is discarded as an unknown option until it is documented.
+- `requestheader=` appears once in uBlock Origin's lists and isn't in the wiki: it is discarded as an unknown option until it is documented (the user's call).
 
 Not applied, and counted as `unsupported` (`yarn lists` prints them): HTML filters (`##^`, except `##^responseheader()`) and `replace=` (Electron can't rewrite response bodies), `cname`, and `popunder` (needs a browser's tabs).

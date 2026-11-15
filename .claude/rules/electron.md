@@ -39,7 +39,7 @@ paths:
 
 - Who asks is the frame's document; a frame's own navigation is asked about from its parent; a document without an address (`about:blank`, `srcdoc`) counts as the one that holds it; without a frame, the referrer. Reading a frame that is gone throws: `requestOf` falls back to the referrer.
 - Only `http(s)` and `ws(s)` URLs are filtered. `cspReport` is the filters' `other`.
-- A blocked document is cancelled (`ERR_BLOCKED_BY_CLIENT`). There is no page that explains it and offers to go on, as uBlock Origin has.
+- A blocked document is cancelled (`ERR_BLOCKED_BY_CLIENT`). There is no page that explains it and offers to go on, as uBlock Origin has (the user's call).
 - **A failure never fails a page load:** each listener answers `{}` when it throws and tells `onError`.
 
 ## `yarn smoke`

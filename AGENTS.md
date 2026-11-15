@@ -6,7 +6,7 @@
 
 It will replace Ghostery's MPL-2.0 blocker in Tokio, the Electron app at `../tokio`, whose YouTube Music player needs ad blocking. That player is the first consumer and the first real-world test, but the engine handles every rule uBlock Origin's lists contain, not only YouTube's (the user's call). The swap is a separate change in the Tokio repo, not here.
 
-Stack: Node >= 24, TypeScript 7, Vitest (on Vite 7) with jsdom, esbuild for the preload, Yarn 1. The host app runs Electron 35 or later (`session.registerPreloadScript`); `electron` is a peer dependency, used for its types only.
+Stack: Node >= 24, TypeScript 7, Vitest (on Vite 7) with jsdom, esbuild for the preload, Yarn 1. The host app runs Electron 35 or later (`session.registerPreloadScript`); `electron` is a peer dependency, used for its types only (the user's call).
 
 ## Commands
 
@@ -135,7 +135,7 @@ What the Electron spike settled (Electron 45, against `https://music.youtube.com
 ## CI and releases
 
 - `ci.yml` (pull requests and `main`): Prettier check (Linux), lint, typecheck, tests and build, on Linux and Windows with Node 24. Linux runs the tests with coverage and uploads `coverage/` as an artifact. On pull requests, `commitlint` checks every commit message against `.commitlintrc`.
-- Publishing isn't set up yet: no `publish.yml`, no `release` skill. The user creates the GitHub repository and pushes. Never push, add a remote or create the repository.
+- The repository is public on GitHub (`tokio-app/adblock`). Publishing isn't set up yet: no `publish.yml`, no `release` skill, and the user sets up npm trusted publishing. Never push without asking.
 
 ## Conventions
 
@@ -177,4 +177,4 @@ Keep these stable; host apps depend on them:
 | 6   | Electron integration          | done   |
 | 7   | Smoke run against a real page | done   |
 
-What is left is in each area's rule: the redirect resources that are guesses and `noop-1s.mp4` (`resources.md`), the scriptlets that aren't documented (`scriptlets.md`), what Electron can't apply (`lists-parser.md`), and no page for a blocked document (`electron.md`).
+What the library leaves out is in each area's rule: the redirect resources that are guesses and `noop-1s.mp4` (`resources.md`), the scriptlets that aren't documented (`scriptlets.md`), what Electron can't apply (`lists-parser.md`), and no page for a blocked document (`electron.md`).

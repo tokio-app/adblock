@@ -40,7 +40,7 @@ paths:
 
 ## Public Suffix List
 
-`PublicSuffixList` (`src/psl/psl.ts`) is our own matcher over Mozilla's list, which `Engine` downloads from `PUBLIC_SUFFIX_LIST_URLS` and keeps in the storage. The list is MPL-2.0 data: it isn't bundled (that needs the user's OK). Without it the class guesses: the last label, or the last two under a two-letter country domain with a common second level (`co.uk`).
+`PublicSuffixList` (`src/psl/psl.ts`) is our own matcher over Mozilla's list, which `Engine` downloads from `PUBLIC_SUFFIX_LIST_URLS` and keeps in the storage. The list is MPL-2.0 data, so it's downloaded, never bundled (the user's call). Without it the class guesses: the last label, or the last two under a two-letter country domain with a common second level (`co.uk`).
 
 ## Measuring
 
