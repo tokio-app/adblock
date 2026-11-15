@@ -25,7 +25,7 @@ paths:
 - `urlskip=` only redirects to an http(s) URL that differs from the request's.
 - `inline-script` adds `script-src 'unsafe-eval' * blob: data:` and `inline-font` adds `font-src *` (`INLINE_SCRIPT_CSP`, `INLINE_FONT_CSP`).
 - `ipaddress=` only matches a URL whose host is an address: Chromium doesn't tell which address a name resolved to.
-- `popup` filters only answer a request of type `popup`; nothing makes one by itself (see the Electron rule once there is one).
+- `popup` filters only answer a request of type `popup`; nothing makes one by itself: the host app asks `engine.blocksPopup` (the Electron rule).
 
 ## Filing
 
