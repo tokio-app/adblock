@@ -25,7 +25,7 @@ The filter lists were also read as data, to measure which syntax, scriptlets and
 
 ## Development tools
 
-Development tools (TypeScript, Vitest, oxlint, Prettier and the rest of `devDependencies`) aren't part of the published package.
+Development tools (TypeScript, Vitest, jsdom, esbuild, Electron, oxlint, Prettier and the rest of `devDependencies`) aren't part of the published package. A scan of the 172 installed packages on 2026-11-14 found only permissive licenses: MIT, Apache-2.0, ISC, BSD-2-Clause, BSD-3-Clause, BlueOak-1.0.0 and Python-2.0. Electron is also the package's peer dependency: the host app's own copy, which the library uses only through what the app passes it.
 
 ## Services
 

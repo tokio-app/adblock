@@ -6,7 +6,7 @@
 
 It will replace Ghostery's MPL-2.0 blocker in Tokio, the Electron app at `../tokio`, whose YouTube Music player needs ad blocking. That player is the first consumer and the first real-world test, but the engine handles every rule uBlock Origin's lists contain, not only YouTube's (the user's call). The swap is a separate change in the Tokio repo, not here.
 
-Stack: Node >= 24, TypeScript 7, Vitest (on Vite 7), Yarn 1. The host app runs Electron 35 or later (`session.registerPreloadScript`).
+Stack: Node >= 24, TypeScript 7, Vitest (on Vite 7) with jsdom, esbuild for the preload, Yarn 1. The host app runs Electron 35 or later (`session.registerPreloadScript`); `electron` is a peer dependency, used for its types only.
 
 ## Commands
 
@@ -28,7 +28,7 @@ Verify changes with `yarn test`, `yarn typecheck`, `yarn lint`, `yarn format:che
 ## Agent models
 
 - **Planning:** Opus 5.5 at high effort. Be 90–95% confident in the plan before implementing or handing off; otherwise keep reading code or ask the user.
-- **Implementation subagents:** Sonnet 5.5 at high effort for well-scoped changes that follow existing patterns. Otherwise Opus 5.5: medium effort for moderate tasks, high for complex or cross-cutting ones (architecture, the parser and the matching engines, the preload and what runs in pages, licensing-sensitive code).
+- **Implementation subagents:** Sonnet 5.5 at high effort for well-scoped changes that follow existing patterns. Otherwise Opus 5.5: medium effort for moderate tasks, high for complex or cross-cutting ones (architecture, IPC/schema changes across processes, concurrency, licensing-sensitive code).
 
 ## Layout
 
@@ -128,6 +128,8 @@ What the Electron spike settled (Electron 45, against `https://music.youtube.com
 - Vitest. Tests sit next to the code as `*.test.ts`; shared fakes and helpers live in `test/`.
 - Tests never touch the network, and neither does CI. Rules in tests are written by hand in the documented syntax, never copied from a filter list.
 - `restoreMocks` and `unstubGlobals` are on: mocks and stubbed globals reset after each test.
+- `yarn test:coverage` has no thresholds: the scriptlets and the redirect resources run as text inside a jsdom page, where the coverage tool doesn't see them, so their numbers read low whatever the tests do.
+- `yarn lists`, `yarn bench` and `yarn smoke` are opt-in and need the network (`yarn bench` only the lists `yarn lists` downloaded). The `verify` skill says when each is due.
 - "Vitest failed to find the runner" in every suite means the working directory has a lowercase drive letter (`c:\`): run from `C:\…`.
 
 ## CI and releases
