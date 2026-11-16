@@ -14,6 +14,20 @@ export interface StoredResource {
 }
 
 /**
+ * Whether a text can be a filter list: not empty, not NULs (what a power cut
+ * can leave in a file renamed before its data reached the disk), and not an
+ * error page served with a 200.
+ */
+export function isFilterList(text: string): boolean {
+  // Not `trim()`: that would copy megabytes to look at the ends.
+  return (
+    /\S/.test(text) &&
+    !text.includes("\0") &&
+    !/^\s*<(?:!doctype|html)/i.test(text)
+  );
+}
+
+/**
  * Where the host app keeps the downloaded lists, so they survive a restart.
  * Keys are list ids, and `<list id>/<path>` for a sub-list.
  */
@@ -37,8 +51,9 @@ export class MemoryStorage implements ListStorage {
 
 /**
  * Keeps each list in a folder as `<key>.txt`, with its HTTP validators in
- * `<key>.json`. Files are written to a temporary name and renamed, so a crash
- * midway leaves the old list whole.
+ * `<key>.json`. Files are written to a temporary name, flushed to the disk
+ * and renamed, so a crash midway leaves the old list whole. A text that
+ * isn't a list reads as missing, so it is downloaded again.
  */
 export class FileStorage implements ListStorage {
   constructor(private readonly directory: string) {}
@@ -54,6 +69,7 @@ export class FileStorage implements ListStorage {
         fs.readFile(this.file(key, "txt"), "utf8"),
         fs.readFile(this.file(key, "json"), "utf8"),
       ]);
+      if (!isFilterList(text)) return undefined;
       const parsed: unknown = JSON.parse(meta);
       if (!isRecord(parsed)) return undefined;
       const { url, fetchedAt, etag, lastModified } = parsed;
@@ -77,14 +93,42 @@ export class FileStorage implements ListStorage {
   async write(key: string, resource: StoredResource): Promise<void> {
     const { text, ...meta } = resource;
     await fs.mkdir(this.directory, { recursive: true });
+    await this.removeLeftovers(key);
     // The text first: validators without their text would skip a download.
     await this.replace(this.file(key, "txt"), text);
     await this.replace(this.file(key, "json"), JSON.stringify(meta));
   }
 
+  /** Removes the temporary files of `key` that a quit midway left. */
+  private async removeLeftovers(key: string): Promise<void> {
+    const names = ["txt", "json"].map((extension) =>
+      path.basename(this.file(key, extension)).replaceAll(".", "\\."),
+    );
+    const leftover = new RegExp(`^(?:${names.join("|")})\\.(\\d+)\\.tmp$`);
+    for (const entry of await fs.readdir(this.directory)) {
+      const match = leftover.exec(entry);
+      // This process's own may belong to a write still running.
+      if (match === null || match[1] === String(process.pid)) continue;
+      await fs
+        .rm(path.join(this.directory, entry), { force: true })
+        .catch(() => {});
+    }
+  }
+
   private async replace(file: string, data: string): Promise<void> {
     const temporary = `${file}.${process.pid}.tmp`;
-    await fs.writeFile(temporary, data);
-    await fs.rename(temporary, file);
+    try {
+      const handle = await fs.open(temporary, "w");
+      try {
+        await handle.writeFile(data);
+        await handle.sync();
+      } finally {
+        await handle.close();
+      }
+      await fs.rename(temporary, file);
+    } catch (error) {
+      await fs.rm(temporary, { force: true }).catch(() => {});
+      throw error;
+    }
   }
 }

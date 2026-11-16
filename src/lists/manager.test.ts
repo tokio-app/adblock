@@ -164,6 +164,7 @@ describe("ListManager", () => {
     for (const first of [
       { body: "<!DOCTYPE html><title>Oops</title>" },
       { body: "  \n" },
+      { body: "\0\0\0" },
       new Error("getaddrinfo ENOTFOUND"),
     ]) {
       const { manager } = setup({
@@ -275,6 +276,60 @@ describe("FileStorage", () => {
     expect(await storage.read("main")).toBeUndefined();
     await fs.writeFile(path.join(directory, "main.json"), '{"url":1}');
     expect(await storage.read("main")).toBeUndefined();
+  });
+
+  test("a stored text that isn't a list reads as missing", async () => {
+    directory = await fs.mkdtemp(path.join(os.tmpdir(), "adblock-"));
+    const storage = new FileStorage(directory);
+    await storage.write("main", {
+      text: "||a.example^",
+      url: MAIN,
+      fetchedAt: 1,
+    });
+    expect(await storage.read("main")).toBeDefined();
+    // What a power cut can leave after the rename, and an error page.
+    for (const text of ["\0".repeat(64), "", "<html><body>Oops"]) {
+      await fs.writeFile(path.join(directory, "main.txt"), text);
+      expect(await storage.read("main")).toBeUndefined();
+    }
+  });
+
+  test("a write removes the temporary files an earlier run left", async () => {
+    directory = await fs.mkdtemp(path.join(os.tmpdir(), "adblock-"));
+    for (const name of [
+      "main.txt.12.tmp",
+      "main.json.345.tmp",
+      "main.txt.txt.6.tmp",
+    ]) {
+      await fs.writeFile(path.join(directory, name), "partial");
+    }
+    await new FileStorage(directory).write("main", {
+      text: "||a.example^",
+      url: MAIN,
+      fetchedAt: 1,
+    });
+    // The last one is key "main.txt"'s.
+    expect((await fs.readdir(directory)).sort()).toEqual([
+      "main.json",
+      "main.txt",
+      "main.txt.txt.6.tmp",
+    ]);
+  });
+
+  test("a failed rename leaves no temporary file", async () => {
+    directory = await fs.mkdtemp(path.join(os.tmpdir(), "adblock-"));
+    // A folder in the way: a file can't be renamed over it.
+    await fs.mkdir(path.join(directory, "main.txt", "inside"), {
+      recursive: true,
+    });
+    await expect(
+      new FileStorage(directory).write("main", {
+        text: "||a.example^",
+        url: MAIN,
+        fetchedAt: 1,
+      }),
+    ).rejects.toThrow();
+    expect(await fs.readdir(directory)).toEqual(["main.txt"]);
   });
 });
 
