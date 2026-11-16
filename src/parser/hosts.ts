@@ -10,6 +10,15 @@ const IPV6 = /^\[[0-9a-f:.]+\]$/;
 // eslint-disable-next-line no-control-regex
 const NON_ASCII = /[^\x00-\x7f]/;
 
+/** No hostnames: shared by every list without any. Nothing changes a list. */
+const NO_HOSTNAMES: readonly string[] = Object.freeze([]);
+
+/** A list without hostnames: what a generic filter has. */
+export const NO_HOSTS: HostList = Object.freeze({
+  include: NO_HOSTNAMES,
+  exclude: NO_HOSTNAMES,
+});
+
 /**
  * Lowercases a hostname and turns non-ASCII labels into punycode, as request
  * URLs have them. Undefined when the text isn't a hostname.
@@ -79,7 +88,8 @@ export function parseHostList(
 ): HostList | undefined {
   const entries = splitEntries(text, separator);
   if (entries === undefined) return undefined;
-  const list: HostList = { include: [], exclude: [] };
+  let include: string[] | undefined;
+  let exclude: string[] | undefined;
   for (let entry of entries) {
     entry = entry.trim();
     if (entry === "") continue;
@@ -99,10 +109,16 @@ export function parseHostList(
       value = normalizeHostname(entry, true);
     }
     if (value === undefined) return undefined;
-    (negated ? list.exclude : list.include).push(value);
+    if (negated) (exclude ??= []).push(value);
+    else (include ??= []).push(value);
   }
-  if (list.include.length === 0 && list.exclude.length === 0) return undefined;
-  return list;
+  if (include === undefined && exclude === undefined) return undefined;
+  // Copies of the exact size: an array grown by push keeps room for 16 more
+  // entries, and filters keep their lists as long as they are in effect.
+  return {
+    include: include === undefined ? NO_HOSTNAMES : include.slice(),
+    exclude: exclude === undefined ? NO_HOSTNAMES : exclude.slice(),
+  };
 }
 
 const regexes = new Map<string, RegExp>();

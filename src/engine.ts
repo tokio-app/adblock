@@ -1,6 +1,7 @@
 import { CosmeticEngine, type DocumentCosmetics } from "./cosmetic/engine.js";
 import { DEFAULT_LISTS } from "./lists/defaults.js";
 import {
+  linesOf,
   ListManager,
   type FetchLike,
   type ListDefinition,
@@ -46,6 +47,66 @@ const MINUTE = 60_000;
 const DAY = 24 * 60 * MINUTE;
 
 const nextTurn = () => new Promise<void>((resolve) => setImmediate(resolve));
+
+/** The Public Suffix List, which changes a few times a month. */
+function fetchSuffixes(
+  manager: ListManager,
+  urls: readonly string[],
+  force = false,
+) {
+  return manager.resource(
+    "public_suffix_list",
+    urls,
+    { updateAfterDays: 19 },
+    force,
+  );
+}
+
+export interface UpdateListsOptions {
+  /** The filter lists (default: `DEFAULT_LISTS`). */
+  lists?: readonly ListDefinition[];
+  /** The storage a later `Engine` will read them from. */
+  storage: ListStorage;
+  /** Defaults to the global `fetch`. */
+  fetch?: FetchLike;
+  /** As in `EngineOptions`. Empty: the Public Suffix List isn't updated. */
+  publicSuffixListUrls?: readonly string[];
+  /** Told about what failed. Nothing is ever thrown. */
+  onError?: (error: Error) => void;
+  now?: () => number;
+}
+
+/**
+ * Downloads the lists and the Public Suffix List that expired into the
+ * storage, without building any rules: an `Engine` made later on the same
+ * storage starts from them without waiting for the network. For a host that
+ * builds the engine only when it's needed. Resolves to whether any changed.
+ */
+export async function updateLists(
+  options: UpdateListsOptions,
+): Promise<boolean> {
+  const onError = options.onError ?? (() => {});
+  const manager = new ListManager({
+    storage: options.storage,
+    fetch: options.fetch,
+    now: options.now,
+    onError,
+  });
+  const reported = (error: unknown) => {
+    onError(toError(error));
+    return undefined;
+  };
+  const pslUrls = options.publicSuffixListUrls ?? PUBLIC_SUFFIX_LIST_URLS;
+  const results = await Promise.all([
+    pslUrls.length === 0
+      ? undefined
+      : fetchSuffixes(manager, pslUrls).catch(reported),
+    ...(options.lists ?? DEFAULT_LISTS).map((list) =>
+      manager.get(list).catch(reported),
+    ),
+  ]);
+  return results.some((result) => result?.changed === true);
+}
 
 /**
  * Downloads the filter lists, keeps them up to date and applies them.
@@ -148,51 +209,55 @@ export class Engine {
       this.onError(toError(error));
       return undefined;
     };
-    const [suffixes, ...loaded] = await Promise.all([
+    const [suffixes, ...fetched] = await Promise.all([
       this.pslUrls.length === 0
         ? undefined
-        : this.manager
-            // The list changes a few times a month.
-            .resource(
-              "public_suffix_list",
-              this.pslUrls,
-              { updateAfterDays: 19 },
-              force,
-            )
-            .catch(reported),
+        : fetchSuffixes(this.manager, this.pslUrls, force).catch(reported),
       ...this.lists.map((list) =>
-        this.manager.load(list, force).catch(reported),
+        this.manager.get(list, force).catch(reported),
       ),
     ]);
     const changed =
       !this.built ||
       suffixes?.changed === true ||
-      loaded.some((list) => list?.changed);
+      fetched.some((list) => list?.changed);
     if (changed) {
       const stats: Record<string, ParseStats> = {};
       const psl = new PublicSuffixList(suffixes?.resource.text);
       const network = new NetworkEngine({ psl });
       const cosmetic = new CosmeticEngine({ psl });
-      for (const list of loaded) {
+      // One list at a time, its rules handed over slice by slice: only one
+      // list's lines and one slice's rules are held at once, not every
+      // list's.
+      const rules = emptyParsedList();
+      for (let index = 0; index < fetched.length; index++) {
+        const list = fetched[index];
         if (list === undefined) continue;
-        const rules = emptyParsedList();
+        fetched[index] = undefined;
+        const lines = linesOf(list);
         const context = { trusted: list.trusted };
-        for (let start = 0; start < list.lines.length; start += SLICE) {
+        rules.stats = emptyParsedList().stats;
+        for (let start = 0; start < lines.length; start += SLICE) {
           parseInto(
             rules,
-            list.lines,
+            lines,
             context,
             start,
-            Math.min(start + SLICE, list.lines.length),
+            Math.min(start + SLICE, lines.length),
           );
+          network.add(rules.network);
+          cosmetic.add(rules);
+          rules.network.length = 0;
+          rules.cosmetic.length = 0;
+          rules.scriptlets.length = 0;
+          rules.responseHeaders.length = 0;
           await nextTurn();
         }
         stats[list.id] = rules.stats;
-        network.add(rules.network);
-        cosmetic.add(rules);
       }
       const steps = network.finalizing();
       while (steps.next().done !== true) await nextTurn();
+      cosmetic.compact();
       this.network = network;
       this.cosmetic = cosmetic;
       this.stats = stats;

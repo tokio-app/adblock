@@ -88,11 +88,12 @@ export type PatternKind =
  * `example.com` (it and its subdomains), `example.*` (an entity: any public
  * suffix), `/regex/` (tested against the hostname) or `*` (everywhere, only in
  * cosmetic filters). A hostname matches when no `exclude` entry matches and,
- * if there are `include` entries, one of them does.
+ * if there are `include` entries, one of them does. Lists are shared, an
+ * empty one by every filter without entries, so nothing changes them.
  */
 export interface HostList {
-  include: string[];
-  exclude: string[];
+  include: readonly string[];
+  exclude: readonly string[];
 }
 
 export type ModifierType =

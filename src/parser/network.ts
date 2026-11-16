@@ -1,5 +1,5 @@
 import { domainToASCII } from "node:url";
-import { tryRegex } from "../util.js";
+import { ownString, tryRegex } from "../util.js";
 import { isHostname, normalizeHostname, parseHostList } from "./hosts.js";
 import {
   F_BADFILTER,
@@ -188,6 +188,12 @@ function splitFilter(
 }
 
 const invalid = (reason: string): NotARule => ({ kind: "invalid", reason });
+const NO_OPTIONS: readonly string[] = [];
+const modifier = (
+  type: Modifier["type"],
+  value: string,
+  priority = 0,
+): Modifier => ({ type, value, priority });
 const unsupported = (reason: string): NotARule => ({
   kind: "unsupported",
   reason,
@@ -258,10 +264,13 @@ function parsePattern(text: string): Pattern | string {
       text = domainToASCII(host) + text.slice(host.length);
     }
     const hostname = text.endsWith("^") ? text.slice(0, -1) : text;
-    if (isHostname(hostname)) return { kind: P_HOST, text: hostname, flags: 0 };
+    // Its own string: a packed rule keeps only its hostname, as a key.
+    if (isHostname(hostname)) {
+      return { kind: P_HOST, text: ownString(hostname), flags: 0 };
+    }
   } else if (flags === 0 && isHostname(text)) {
     // A pattern that reads as a hostname is one, as in a hosts file.
-    return { kind: P_HOST, text, flags: 0 };
+    return { kind: P_HOST, text: ownString(text), flags: 0 };
   }
   text = text.replace(/\*{2,}/g, "*");
   // A wildcard next to an anchor undoes it.
@@ -291,20 +300,27 @@ export function parseNetworkFilter(
     flags |= F_EXCEPTION;
     text = text.slice(2);
   }
-  const split = splitFilter(text);
-  if (typeof split === "string") return invalid(split);
+  // Most filters have no options: no need to look for them.
+  let patternText = text;
+  let options: readonly string[] = NO_OPTIONS;
+  if (text.includes("$")) {
+    const split = splitFilter(text);
+    if (typeof split === "string") return invalid(split);
+    patternText = split.pattern;
+    options = split.options;
+  }
 
   let types = 0;
   let notTypes = 0;
   let popunder = false;
   let from: HostList | undefined;
   let extra: ExtraOptions | undefined;
-  // A filter has one modifier: a second one discards it.
-  const modifiers: Modifier[] = [];
-  const modify = (type: Modifier["type"], value: string, priority = 0) =>
-    modifiers.push({ type, value, priority });
+  // A filter has one modifier: a second one discards it. (Counted, not
+  // pushed through a closure: this runs for every filter of every list.)
+  let mod: Modifier | undefined;
+  let modifiers = 0;
 
-  for (const part of split.options) {
+  for (const part of options) {
     const equals = part.indexOf("=");
     let name = (equals === -1 ? part : part.slice(0, equals))
       .trim()
@@ -410,23 +426,30 @@ export function parseNetworkFilter(
         if (/\breport-(?:uri|to)\b/i.test(value)) {
           return invalid("csp= with a report directive");
         }
-        modify("csp", value);
+        modifiers++;
+        mod ??= modifier("csp", value);
         break;
       case "permissions":
-        modify("permissions", value.replaceAll("|", ", "));
+        modifiers++;
+        mod ??= modifier("permissions", value.replaceAll("|", ", "));
         break;
       case "redirect":
       case "redirect-rule": {
         const priority = /^(.+):(-?\d+)$/.exec(value);
-        if (priority === null) modify(name, value);
-        else modify(name, priority[1]!, Number(priority[2]));
+        modifiers++;
+        mod ??=
+          priority === null
+            ? modifier(name, value)
+            : modifier(name, priority[1]!, Number(priority[2]));
         break;
       }
       case "empty":
-        modify("redirect", "empty");
+        modifiers++;
+        mod ??= modifier("redirect", "empty");
         break;
       case "mp4":
-        modify("redirect", "noopmp4-1s");
+        modifiers++;
+        mod ??= modifier("redirect", "noopmp4-1s");
         if (types === 0) types = T_MEDIA;
         break;
       case "rewrite":
@@ -434,17 +457,23 @@ export function parseNetworkFilter(
         if (!value.startsWith("abp-resource:")) {
           return invalid("bad rewrite= value");
         }
-        modify("redirect", value.slice("abp-resource:".length));
+        modifiers++;
+        mod ??= modifier("redirect", value.slice("abp-resource:".length));
         break;
       case "removeparam":
       case "queryprune":
-        modify("removeparam", value);
+        modifiers++;
+        mod ??= modifier("removeparam", value);
         break;
       case "uritransform":
       case "urltransform":
       case "urlskip":
         if (!context.trusted) return invalid(`${name}= in an untrusted list`);
-        modify(name === "urlskip" ? "urlskip" : "uritransform", value);
+        modifiers++;
+        mod ??= modifier(
+          name === "urlskip" ? "urlskip" : "uritransform",
+          value,
+        );
         break;
       case "replace":
         return unsupported("replace= (Electron can't rewrite response bodies)");
@@ -460,7 +489,7 @@ export function parseNetworkFilter(
     }
   }
 
-  const pattern = parsePattern(split.pattern);
+  const pattern = parsePattern(patternText);
   if (typeof pattern === "string") return invalid(pattern);
   flags |= pattern.flags;
 
@@ -480,7 +509,7 @@ export function parseNetworkFilter(
   if (types === 0) {
     types = T_NETWORK;
     // A filter that is only a hostname blocks pages on it too.
-    if (pattern.kind === P_HOST && notTypes === 0 && modifiers.length === 0) {
+    if (pattern.kind === P_HOST && notTypes === 0 && modifiers === 0) {
       types |= T_DOCUMENT;
     }
   }
@@ -489,8 +518,7 @@ export function parseNetworkFilter(
     return invalid("generichide, specifichide and elemhide need an exception");
   }
 
-  if (modifiers.length > 1) return invalid("two modifiers");
-  const mod = modifiers[0];
+  if (modifiers > 1) return invalid("two modifiers");
   if (mod !== undefined) {
     if (mod.type === "redirect" && exception) mod.type = "redirect-rule";
     const needsValue =

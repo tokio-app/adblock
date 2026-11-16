@@ -10,6 +10,7 @@ import {
   P_PATTERN,
   type NetworkRule,
 } from "../parser/types.js";
+import { compactBuckets, ownString } from "../util.js";
 import { ruleMatches } from "./pattern.js";
 import type { Request } from "./request.js";
 import { ruleTokens } from "./tokens.js";
@@ -27,6 +28,21 @@ const TYPE_MASK = (1 << TYPE_BITS) - 1;
 const FLAG_MASK = (1 << 11) - 1;
 /** A packed path ends with `^`: a separator or the URL's end must follow. */
 const SEPARATOR_FOLLOWS = 1 << 29;
+
+/** A rule's flags and types as one number, as packed rules keep them. */
+export const packBits = (flags: number, types: number): number =>
+  (flags << TYPE_BITS) | types;
+export const typesOf = (bits: number): number => bits & TYPE_MASK;
+
+/** A `||hostname^` rule with nothing but flags and types: it packs. */
+export function isPlainHost(rule: NetworkRule): boolean {
+  return rule.patternKind === P_HOST && isPlain(rule);
+}
+
+/** The plain `||hostname^` rule packed into `bits`. */
+export function unpackHost(hostname: string, bits: number): NetworkRule {
+  return unpack(hostname, bits);
+}
 
 /** `||hostname/literal` rules of one hostname, sorted by pattern. */
 interface PathBucket {
@@ -92,23 +108,34 @@ export class FilterIndex {
   private readonly sources = new Map<string, NetworkRule[]>();
   private readonly rest: NetworkRule[] = [];
 
-  add(rule: NetworkRule): void {
+  /**
+   * Files a plain `||hostname^` rule from its hostname and `packBits`. The
+   * parser gives hostnames of their own (`ownString`), not cut out of a line,
+   * which a key would keep in memory.
+   */
+  addHost(hostname: string, packed: number): void {
     this.size++;
-    const packed = (rule.flags << TYPE_BITS) | rule.types;
+    const existing = this.simpleHosts.get(hostname);
+    if (existing === undefined) this.simpleHosts.set(hostname, packed);
+    else if (typeof existing === "number") {
+      if (existing !== packed) {
+        this.simpleHosts.set(hostname, [existing, packed]);
+      }
+    } else if (!existing.includes(packed)) existing.push(packed);
+  }
+
+  add(rule: NetworkRule): void {
+    const packed = packBits(rule.flags, rule.types);
     if (rule.patternKind === P_HOST) {
-      if (!isPlain(rule)) {
-        push(this.hosts, rule.pattern, rule);
+      if (isPlain(rule)) {
+        this.addHost(rule.pattern, packed);
         return;
       }
-      const existing = this.simpleHosts.get(rule.pattern);
-      if (existing === undefined) this.simpleHosts.set(rule.pattern, packed);
-      else if (typeof existing === "number") {
-        if (existing !== packed) {
-          this.simpleHosts.set(rule.pattern, [existing, packed]);
-        }
-      } else if (!existing.includes(packed)) existing.push(packed);
+      this.size++;
+      push(this.hosts, rule.pattern, rule);
       return;
     }
+    this.size++;
     const hostname = leadingHostname(rule);
     if (hostname === undefined) {
       this.pending!.push(rule);
@@ -128,9 +155,11 @@ export class FilterIndex {
     let bucket = this.simplePaths.get(hostname);
     if (bucket === undefined) {
       bucket = { patterns: [], packed: [] };
-      this.simplePaths.set(hostname, bucket);
+      this.simplePaths.set(ownString(hostname), bucket);
     }
-    bucket.patterns.push(literal);
+    // Packed, the rule is only its pattern: a copy of its own, not a cut of
+    // the line, which would keep the whole line.
+    bucket.patterns.push(ownString(literal));
     bucket.packed.push(separator ? packed | SEPARATOR_FOLLOWS : packed);
   }
 
@@ -198,8 +227,9 @@ export class FilterIndex {
       }
       if (candidates.length % STEP === 0) yield;
     }
-    for (const [index, rule] of pending.entries()) {
+    for (let index = 0; index < pending.length; index++) {
       if (index % STEP === 0) yield;
+      const rule = pending[index]!;
       let best: string | undefined;
       let bestCount = Infinity;
       for (const token of candidates[index]!) {
@@ -221,6 +251,13 @@ export class FilterIndex {
       ) {
         for (const site of sites) push(this.sources, site, rule);
       } else this.rest.push(rule);
+    }
+    compactBuckets(this.hosts);
+    compactBuckets(this.tokens);
+    compactBuckets(this.sources);
+    for (const [hostname, packed] of this.simpleHosts) {
+      if (typeof packed !== "number")
+        this.simpleHosts.set(hostname, packed.slice());
     }
   }
 

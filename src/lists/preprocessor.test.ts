@@ -160,3 +160,33 @@ describe("includesOf", () => {
     ).toEqual(["a.txt", "b.txt"]);
   });
 });
+
+describe("preprocess, line by line", () => {
+  test("cuts lines where a split at \n or \r\n would", () => {
+    const text = "a\r\nb\n\nc\r\n";
+    expect(preprocess(text)).toEqual(text.split(/\r?\n/));
+    // A \r that no \n follows stays in its line.
+    expect(preprocess("a\rb\r")).toEqual(["a\rb\r"]);
+    expect(preprocess("")).toEqual([""]);
+  });
+
+  test("a directive starts its line", () => {
+    expect(
+      preprocess("x !#if false\nkept\n!#if false\ndropped\n!#endif"),
+    ).toEqual(["x !#if false", "kept"]);
+  });
+});
+
+describe("includesOf, directives only", () => {
+  test("reads only the lines a directive starts, live ones", () => {
+    expect(
+      includesOf(
+        "! not !#include a.txt\n!#if false\n!#include b.txt\n!#endif\r\n" +
+          "!#include c.txt\r\n||x.example^ !#include d.txt",
+      ),
+    ).toEqual(["c.txt"]);
+    expect(includesOf("!#include first.txt\n||a.example^")).toEqual([
+      "first.txt",
+    ]);
+  });
+});

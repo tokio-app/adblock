@@ -1,5 +1,6 @@
+import { ownString } from "../util.js";
 import { parseCosmeticFilter, splitCosmetic } from "./cosmetic.js";
-import { normalizeHostname } from "./hosts.js";
+import { isHostname, normalizeHostname } from "./hosts.js";
 import { parseNetworkFilter } from "./network.js";
 import {
   F_EXCEPTION,
@@ -86,6 +87,54 @@ const LOCAL_NAMES = new Set([
 ]);
 
 /**
+ * `||hostname^` or `@@||hostname^` in lowercase, without options: most of a
+ * list's network filters. Parsed here as `parseNetworkFilter` would, without
+ * copying the line or reading options. Undefined for anything else.
+ */
+function plainHostFilter(line: string): NetworkRule | undefined {
+  const exception =
+    line.charCodeAt(0) === 0x40 /* @ */ && line.charCodeAt(1) === 0x40;
+  const start = exception ? 4 : 2;
+  const end = line.length - 1;
+  if (
+    line.charCodeAt(start - 2) !== 0x7c /* | */ ||
+    line.charCodeAt(start - 1) !== 0x7c ||
+    line.charCodeAt(end) !== 0x5e /* ^ */ ||
+    end <= start
+  ) {
+    return undefined;
+  }
+  // Only what a hostname holds, already lowercase: a capital, an option, a
+  // path or a wildcard takes the whole parser.
+  for (let i = start; i < end; i++) {
+    const c = line.charCodeAt(i);
+    if (!(
+      (c >= 0x61 && c <= 0x7a) ||
+      (c >= 0x30 && c <= 0x39) ||
+      c === 0x2e ||
+      c === 0x2d ||
+      c === 0x5f
+    )) {
+      return undefined;
+    }
+  }
+  const hostname = line.slice(start, end);
+  if (!isHostname(hostname)) return undefined;
+  return {
+    kind: "network",
+    // Cut out of the list's text: the engine packs the rule, which drops it.
+    raw: line,
+    patternKind: P_HOST,
+    pattern: ownString(hostname),
+    flags: exception ? F_EXCEPTION : 0,
+    types: T_NETWORK | T_DOCUMENT,
+    from: undefined,
+    modifier: undefined,
+    extra: undefined,
+  };
+}
+
+/**
  * Parses one line of a filter list and hands each result to `emit`: one per
  * line, except a hosts file line, which gives a rule per hostname.
  */
@@ -103,6 +152,11 @@ export function parseLine(
     (first === 0x23 /* # */ && !EXTENDED_START.test(line))
   ) {
     emit(COMMENT);
+    return;
+  }
+  const host = plainHostFilter(line);
+  if (host !== undefined) {
+    emit(host);
     return;
   }
   // A line cut out of a list's text keeps the whole text in memory, and so
@@ -123,7 +177,7 @@ export function parseLine(
           kind: "network",
           raw: line,
           patternKind: P_HOST,
-          pattern: hostname,
+          pattern: ownString(hostname),
           flags: 0,
           types: T_NETWORK | T_DOCUMENT,
           from: undefined,

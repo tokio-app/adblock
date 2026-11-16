@@ -1,4 +1,4 @@
-import { parseHostList } from "./hosts.js";
+import { NO_HOSTS, parseHostList } from "./hosts.js";
 import { compileSelector } from "./selector.js";
 import type {
   CosmeticRule,
@@ -36,10 +36,7 @@ export function splitCosmetic(line: string): CosmeticParts | undefined {
   const match = MARKER.exec(line);
   if (match === null) return undefined;
   const prefix = match[1]!.trim();
-  const hosts =
-    prefix === ""
-      ? { include: [], exclude: [] }
-      : parseHostList(prefix, ",", true);
+  const hosts = prefix === "" ? NO_HOSTS : parseHostList(prefix, ",", true);
   if (hosts === undefined) return undefined;
   return { hosts, marker: match[2]!, body: match[3]!.trim() };
 }
@@ -75,12 +72,22 @@ export function parseScriptletArgs(text: string): string[] {
       i = next;
       continue;
     }
+    // Cut out whole, around the escaped commas: one character at a time
+    // would make a string of each.
     let arg = "";
+    let from = i;
     let k = i;
-    for (; k < text.length && text[k] !== ","; k++) {
-      if (text[k] === "\\" && text[k + 1] === ",") k++;
-      arg += text[k];
+    for (; k < text.length && text.charCodeAt(k) !== 0x2c /* , */; k++) {
+      if (
+        text.charCodeAt(k) === 0x5c /* \ */ &&
+        text.charCodeAt(k + 1) === 0x2c
+      ) {
+        arg += text.slice(from, k);
+        k++;
+        from = k;
+      }
     }
+    arg += text.slice(from, k);
     args.push(arg.trim());
     if (k >= text.length) break;
     i = k + 1;

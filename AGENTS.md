@@ -36,7 +36,7 @@ Verify changes with `yarn test`, `yarn typecheck`, `yarn lint`, `yarn format:che
 src/
   index.ts            public exports (the only entry point)
   engine.ts           Engine: loads the lists and the Public Suffix List, keeps them up to date, builds the engines
-  util.ts             toError, tryRegex, isRecord
+  util.ts             toError, tryRegex, ownString, compactBuckets, isRecord
   lists/              defaults.ts (DEFAULT_LISTS), manager.ts (ListManager: download, mirrors, expiry, HTTP validators,
                       sub-lists), storage.ts (ListStorage, FileStorage, MemoryStorage), preprocessor.ts (!#if, !#else,
                       !#endif, !#include and the environment they see)

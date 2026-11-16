@@ -270,3 +270,20 @@ describe("war: resources", () => {
     ]);
   });
 });
+
+describe("compact", () => {
+  test("changes nothing a document gets, and more can be added after", () => {
+    const engine = build([
+      "a.example##.one",
+      "a.example##.two",
+      "##.generic",
+      "a.example##+js(nowoif)",
+      "b.example##+js(nowoif)",
+    ]);
+    const before = engine.forDocument("a.example");
+    engine.compact();
+    expect(engine.forDocument("a.example")).toEqual(before);
+    engine.add(parseList("a.example##.three"));
+    expect(css(engine, "a.example")).toContain(`.three${HIDE}`);
+  });
+});

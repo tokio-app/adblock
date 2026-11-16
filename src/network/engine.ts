@@ -17,7 +17,13 @@ import {
 import { PublicSuffixList } from "../psl/psl.js";
 import { findResource } from "../resources/index.js";
 import { tryRegex } from "../util.js";
-import { FilterIndex } from "./filterIndex.js";
+import {
+  FilterIndex,
+  isPlainHost,
+  packBits,
+  typesOf,
+  unpackHost,
+} from "./filterIndex.js";
 import {
   INLINE_FONT_CSP,
   INLINE_SCRIPT_CSP,
@@ -171,6 +177,11 @@ export class NetworkEngine {
   };
   private readonly resource: (token: string) => string | undefined;
   private pending: NetworkRule[] = [];
+  // `||hostname^` rules with nothing but flags and types, most of a list's
+  // network rules, wait as their hostname and one number: a rule object each
+  // would hold three times the memory until `finalize()`.
+  private pendingHosts: string[] = [];
+  private pendingHostBits: number[] = [];
   /** Block and exception filters, the block half of `redirect=` included. */
   private readonly blocks = new FilterIndex();
   /** Redirect directives: `redirect-rule=` and the other half of `redirect=`. */
@@ -191,7 +202,13 @@ export class NetworkEngine {
 
   /** Adds a list's network rules. They take effect at `finalize()`. */
   add(rules: readonly NetworkRule[]): void {
-    for (const rule of rules) this.pending.push(rule);
+    for (let index = 0; index < rules.length; index++) {
+      const rule = rules[index]!;
+      if (isPlainHost(rule) && !(rule.flags & F_BADFILTER)) {
+        this.pendingHosts.push(rule.pattern);
+        this.pendingHostBits.push(packBits(rule.flags, rule.types));
+      } else this.pending.push(rule);
+    }
   }
 
   /** Applies the `badfilter`s and files every rule. */
@@ -218,8 +235,14 @@ export class NetworkEngine {
   *finalizing(): Generator<void> {
     const bad = new Set<string>();
     const badSites = new Map<string, Set<string>>();
-    for (const rule of this.pending) {
+    // A badfilter only removes a rule with its pattern: the others are filed
+    // without making their key.
+    const badPatterns = new Set<string>();
+    const { pending } = this;
+    for (let index = 0; index < pending.length; index++) {
+      const rule = pending[index]!;
       if (!(rule.flags & F_BADFILTER)) continue;
+      badPatterns.add(rule.pattern);
       if (perSite(rule)) {
         const key = ruleKey(rule, false);
         const sites = badSites.get(key) ?? new Set();
@@ -227,23 +250,44 @@ export class NetworkEngine {
         badSites.set(key, sites);
       } else bad.add(ruleKey(rule, true));
     }
-    let filed = 0;
-    for (let rule of this.pending) {
-      if (++filed % 5000 === 0) yield;
-      if (rule.flags & F_BADFILTER) continue;
-      if (bad.size > 0 && bad.has(ruleKey(rule, true))) {
+    const hosts = this.pendingHosts;
+    const hostBits = this.pendingHostBits;
+    this.pendingHosts = [];
+    this.pendingHostBits = [];
+    for (let index = 0; index < hosts.length; index++) {
+      if ((index + 1) % 5000 === 0) yield;
+      const pattern = hosts[index]!;
+      const bits = hostBits[index]!;
+      if (
+        badPatterns.has(pattern) &&
+        bad.has(ruleKey(unpackHost(pattern, bits), true))
+      ) {
         this.stats.badfiltered++;
         continue;
       }
-      if (badSites.size > 0 && perSite(rule)) {
-        const sites = badSites.get(ruleKey(rule, false));
-        if (sites !== undefined) {
-          const include = rule.from!.include.filter((site) => !sites.has(site));
-          if (include.length === 0) {
-            this.stats.badfiltered++;
-            continue;
+      this.fileHost(pattern, bits);
+    }
+    for (let index = 0; index < pending.length; index++) {
+      if ((index + 1) % 5000 === 0) yield;
+      let rule = pending[index]!;
+      if (rule.flags & F_BADFILTER) continue;
+      if (badPatterns.has(rule.pattern)) {
+        if (bad.size > 0 && bad.has(ruleKey(rule, true))) {
+          this.stats.badfiltered++;
+          continue;
+        }
+        if (badSites.size > 0 && perSite(rule)) {
+          const sites = badSites.get(ruleKey(rule, false));
+          if (sites !== undefined) {
+            const include = rule.from!.include.filter(
+              (site) => !sites.has(site),
+            );
+            if (include.length === 0) {
+              this.stats.badfiltered++;
+              continue;
+            }
+            rule = { ...rule, from: { include, exclude: [] } };
           }
-          rule = { ...rule, from: { include, exclude: [] } };
         }
       }
       this.file(rule);
@@ -258,6 +302,17 @@ export class NetworkEngine {
     ]) {
       yield* index.finalizing();
     }
+  }
+
+  /** What `file()` does with a plain `||hostname^` rule, without the rule. */
+  private fileHost(hostname: string, bits: number): void {
+    this.stats.rules++;
+    const types = typesOf(bits);
+    if (types & T_COSMETIC) {
+      this.switches.addHost(hostname, bits);
+      if ((types & ~T_COSMETIC) === 0) return;
+    }
+    this.blocks.addHost(hostname, bits);
   }
 
   private file(rule: NetworkRule): void {

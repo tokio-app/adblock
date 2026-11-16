@@ -101,6 +101,60 @@ export interface PreprocessOptions {
 const MAX_DEPTH = 4;
 
 /**
+ * Follows a list's `!#if`, `!#else` and `!#endif` lines: whether the lines
+ * after them are live. `directive` gives the path of a live `!#include`.
+ */
+class Directives {
+  live = true;
+  // One entry per open `!#if`: whether its block is live, and whether the
+  // block around it is.
+  private readonly stack: { live: boolean; outer: boolean }[] = [];
+
+  constructor(
+    private readonly environment: Readonly<Record<string, boolean>>,
+  ) {}
+
+  directive(line: string): string | undefined {
+    const directive = /^!#(\w+)\s*(.*?)\s*$/.exec(line);
+    switch (directive?.[1]) {
+      case "if": {
+        const outer = this.live;
+        this.live = outer && evaluateCondition(directive[2]!, this.environment);
+        this.stack.push({ live: this.live, outer });
+        break;
+      }
+      case "else": {
+        const block = this.stack.at(-1);
+        if (block !== undefined) this.live = block.outer && !block.live;
+        break;
+      }
+      case "endif": {
+        const block = this.stack.pop();
+        if (block !== undefined) this.live = block.outer;
+        break;
+      }
+      case "include":
+        if (this.live) return directive[2]!;
+        break;
+    }
+    return undefined;
+  }
+}
+
+/** Where the line starting at `from` ends: its `\n`, or the text's end. */
+function lineEnd(text: string, from: number): number {
+  const end = text.indexOf("\n", from);
+  return end === -1 ? text.length : end;
+}
+
+/** The line from `start` to `end`, without the `\r` of a `\r\n`. */
+function lineAt(text: string, start: number, end: number): string {
+  return end < text.length && text.charCodeAt(end - 1) === 0x0d /* \r */
+    ? text.slice(start, end - 1)
+    : text.slice(start, end);
+}
+
+/**
  * Applies a list's pre-parsing directives: keeps the lines of `!#if` blocks
  * whose condition holds (with `!#else`), and puts each `!#include`d sub-list
  * where its directive was. Returns the lines left, directives removed.
@@ -109,47 +163,28 @@ export function preprocess(
   text: string,
   options: PreprocessOptions = {},
   depth = 0,
+  out: string[] = [],
 ): string[] {
-  const environment = options.environment ?? ENVIRONMENT;
-  const out: string[] = [];
-  // One entry per open `!#if`: whether its block is live, and whether the
-  // block around it is.
-  const stack: { live: boolean; outer: boolean }[] = [];
-  let live = true;
-  for (const line of text.split(/\r?\n/)) {
-    if (!line.startsWith("!#")) {
-      if (live) out.push(line);
-      continue;
-    }
-    const directive = /^!#(\w+)\s*(.*?)\s*$/.exec(line);
-    switch (directive?.[1]) {
-      case "if":
-        stack.push({ live, outer: live });
-        live = live && evaluateCondition(directive[2]!, environment);
-        stack[stack.length - 1]!.live = live;
-        break;
-      case "else": {
-        const block = stack.at(-1);
-        if (block !== undefined) live = block.outer && !block.live;
-        break;
-      }
-      case "endif": {
-        const block = stack.pop();
-        if (block !== undefined) live = block.outer;
-        break;
-      }
-      case "include": {
-        const path = directive[2]!;
-        if (!live || depth >= MAX_DEPTH || !isSafeInclude(path)) break;
+  const state = new Directives(options.environment ?? ENVIRONMENT);
+  // Line by line without splitting the text first: a split would make an
+  // array of every line, directives and dead blocks included.
+  for (let start = 0; start <= text.length;) {
+    const end = lineEnd(text, start);
+    if (
+      text.charCodeAt(start) !== 0x21 /* ! */ ||
+      text.charCodeAt(start + 1) !== 0x23 /* # */
+    ) {
+      if (state.live) out.push(lineAt(text, start, end));
+    } else {
+      const path = state.directive(lineAt(text, start, end));
+      if (path !== undefined && depth < MAX_DEPTH && isSafeInclude(path)) {
         const included = options.include?.(path);
         if (included !== undefined) {
-          for (const sub of preprocess(included, options, depth + 1)) {
-            out.push(sub);
-          }
+          preprocess(included, options, depth + 1, out);
         }
-        break;
       }
     }
+    start = end + 1;
   }
   return out;
 }
@@ -157,15 +192,22 @@ export function preprocess(
 /** The sub-lists a list `!#include`s from blocks whose condition holds. */
 export function includesOf(
   text: string,
-  environment?: Readonly<Record<string, boolean>>,
+  environment: Readonly<Record<string, boolean>> = ENVIRONMENT,
 ): string[] {
   const paths: string[] = [];
-  preprocess(text, {
-    environment,
-    include: (path) => {
-      if (!paths.includes(path)) paths.push(path);
-      return undefined;
-    },
-  });
+  const state = new Directives(environment);
+  // Only the directives' lines matter.
+  const next = (from: number) => {
+    const at = text.indexOf("\n!#", from);
+    return at === -1 ? -1 : at + 1;
+  };
+  for (let start = text.startsWith("!#") ? 0 : next(0); start !== -1;) {
+    const end = lineEnd(text, start);
+    const path = state.directive(lineAt(text, start, end));
+    if (path !== undefined && isSafeInclude(path) && !paths.includes(path)) {
+      paths.push(path);
+    }
+    start = next(end);
+  }
   return paths;
 }

@@ -729,3 +729,26 @@ describe("the index", () => {
     expect(blocks(engine, "https://ads.example/x.png", "image")).toBe(false);
   });
 });
+
+describe("plain hostname filters and badfilter", () => {
+  test("a badfilter removes them from any list, before or after it", () => {
+    const engine = new NetworkEngine({ psl });
+    const add = (...lines: string[]) =>
+      engine.add(parseList(lines.join("\n")).network);
+    add("||early.example^", "||kept.example^", "||twice.example^");
+    add(
+      "||early.example^$badfilter",
+      "||late.example^$badfilter",
+      "||twice.example^$badfilter",
+    );
+    add("||late.example^", "||twice.example^");
+    engine.finalize();
+    for (const host of ["early", "late", "twice"]) {
+      expect(blocks(engine, `https://${host}.example/x.js`)).toBe(false);
+    }
+    expect(blocks(engine, "https://kept.example/x.js")).toBe(true);
+    // Each filter removed counts: the one in two lists twice.
+    expect(engine.stats.badfiltered).toBe(4);
+    expect(engine.stats.rules).toBe(1);
+  });
+});
