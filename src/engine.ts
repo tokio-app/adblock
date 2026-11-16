@@ -197,7 +197,7 @@ export class Engine {
     ).block;
   }
 
-  /** Stops the updates. The rules stay in effect. */
+  /** Stops the updates, a build still running included. The rules stay. */
   dispose(): void {
     this.disposed = true;
     clearTimeout(this.timer);
@@ -217,6 +217,9 @@ export class Engine {
         this.manager.get(list, force).catch(reported),
       ),
     ]);
+    // Disposed meanwhile: the host closed what it blocked for, so a build
+    // would only cost time and memory. Checked after every wait below too.
+    if (this.disposed) return false;
     const changed =
       !this.built ||
       suffixes?.changed === true ||
@@ -252,11 +255,15 @@ export class Engine {
           rules.scriptlets.length = 0;
           rules.responseHeaders.length = 0;
           await nextTurn();
+          if (this.disposed) return false;
         }
         stats[list.id] = rules.stats;
       }
       const steps = network.finalizing();
-      while (steps.next().done !== true) await nextTurn();
+      while (steps.next().done !== true) {
+        await nextTurn();
+        if (this.disposed) return false;
+      }
       cosmetic.compact();
       this.network = network;
       this.cosmetic = cosmetic;

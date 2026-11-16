@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import { fetchStub } from "../test/helpers/fetchStub.js";
 import { Engine, updateLists } from "./engine.js";
 import { MemoryStorage } from "./lists/storage.js";
+import { NetworkEngine } from "./network/engine.js";
 
 const A = "https://lists.example/a.txt";
 const B = "https://lists.example/b.txt";
@@ -119,6 +120,34 @@ describe("Engine", () => {
     engine.dispose();
     expect(vi.getTimerCount()).toBe(0);
     expect(await engine.update(true)).toBe(false);
+  });
+
+  test("dispose() stops a build that is running", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    // More than one slice of lines, so the build waits between slices.
+    const long = Array.from({ length: 5000 }, (_, i) => `||x${i}.example^`);
+    for (const when of ["download", "parse"] as const) {
+      const { engine, fetch } = setup({
+        [A]: { body: "||a.example^" },
+        [B]: { body: "||b.example^" },
+      });
+      await engine.ready;
+      const { stats } = engine;
+      fetch.routes[A] = () => {
+        if (when === "download") engine.dispose();
+        return { body: long.join("\n") };
+      };
+      if (when === "parse") {
+        // Disposed while the first slice is handed over.
+        vi.spyOn(NetworkEngine.prototype, "add").mockImplementation(() =>
+          engine.dispose(),
+        );
+      }
+      expect(await engine.update(true)).toBe(false);
+      expect(engine.stats).toBe(stats);
+      expect(vi.getTimerCount()).toBe(0);
+      vi.restoreAllMocks();
+    }
   });
 });
 
