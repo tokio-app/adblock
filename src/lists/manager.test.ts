@@ -1,7 +1,14 @@
-import fs from "node:fs/promises";
+import fs, { type FileHandle } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, describe, expect, test } from "vitest";
+import {
+  afterEach,
+  describe,
+  expect,
+  test,
+  vi,
+  type MockInstance,
+} from "vitest";
 import { fetchStub } from "../../test/helpers/fetchStub.js";
 import { DEFAULT_LISTS } from "./defaults.js";
 import {
@@ -313,6 +320,49 @@ describe("FileStorage", () => {
       "main.json",
       "main.txt",
       "main.txt.txt.6.tmp",
+    ]);
+  });
+
+  test("a write flushes each file to the disk before renaming it into place", async () => {
+    directory = await fs.mkdtemp(path.join(os.tmpdir(), "adblock-"));
+    // Only the handles the storage opens, so no other file work counts.
+    const open = fs.open;
+    const syncs: MockInstance[] = [];
+    const closes: MockInstance[] = [];
+    vi.spyOn(fs, "open").mockImplementation(
+      async (...args: Parameters<typeof fs.open>): Promise<FileHandle> => {
+        const handle = await open(...args);
+        syncs.push(vi.spyOn(handle, "sync"));
+        closes.push(vi.spyOn(handle, "close"));
+        return handle;
+      },
+    );
+    const rename = vi.spyOn(fs, "rename");
+    await new FileStorage(directory).write("main", {
+      text: "||a.example^",
+      url: MAIN,
+      fetchedAt: 1,
+    });
+    // A rename that reaches the disk before the data can leave a file of
+    // NULs after a power cut.
+    const steps = [
+      ...syncs.flatMap((spy) =>
+        spy.mock.invocationCallOrder.map((at) => ({ at, step: "sync" })),
+      ),
+      ...closes.flatMap((spy) =>
+        spy.mock.invocationCallOrder.map((at) => ({ at, step: "close" })),
+      ),
+      ...rename.mock.invocationCallOrder.map((at) => ({ at, step: "rename" })),
+    ]
+      .sort((a, b) => a.at - b.at)
+      .map(({ step }) => step);
+    expect(steps).toEqual([
+      "sync",
+      "close",
+      "rename",
+      "sync",
+      "close",
+      "rename",
     ]);
   });
 
