@@ -1,6 +1,10 @@
 import { toError } from "../util.js";
 import { includesOf, preprocess } from "./preprocessor.js";
-import type { ListStorage, StoredResource } from "./storage.js";
+import {
+  isFilterList,
+  type ListStorage,
+  type StoredResource,
+} from "./storage.js";
 
 /** A filter list to download and apply. */
 export interface ListDefinition {
@@ -231,11 +235,7 @@ export class ListManager {
         }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const text = await response.text();
-        // An error page served with a 200 isn't a list. (Not `trim()`: that
-        // would copy megabytes to look at the ends.)
-        if (!/\S/.test(text) || /^\s*<(?:!doctype|html)/i.test(text)) {
-          throw new Error("not a filter list");
-        }
+        if (!isFilterList(text)) throw new Error("not a filter list");
         return {
           text,
           url,
