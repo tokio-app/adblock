@@ -504,3 +504,13 @@ describe("selectorKey", () => {
     expect(selectorKey("amp-ad")).toBeUndefined();
   });
 });
+
+describe("parseScriptletArgs, escapes", () => {
+  test("several escaped commas, and a backslash that escapes nothing", () => {
+    expect(parseScriptletArgs("x, a\\,b\\,c,d\\")).toEqual([
+      "x",
+      "a,b,c",
+      "d\\",
+    ]);
+  });
+});

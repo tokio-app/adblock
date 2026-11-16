@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
 import { fetchStub } from "../test/helpers/fetchStub.js";
-import { Engine } from "./engine.js";
+import { Engine, updateLists } from "./engine.js";
 import { MemoryStorage } from "./lists/storage.js";
 
 const A = "https://lists.example/a.txt";
@@ -227,5 +227,41 @@ describe("Engine and popups", () => {
     ).toBe(false);
     // A filter without the popup type says nothing about new windows.
     expect(engine.blocksPopup("https://ads.example/", opener)).toBe(false);
+  });
+});
+
+describe("updateLists", () => {
+  test("downloads what expired, and an engine made after starts from it", async () => {
+    const fetch = fetchStub({
+      [A]: { body: "||a.example^" },
+      [B]: { body: "||b.example^" },
+    });
+    const storage = new MemoryStorage();
+    const now = () => 5_000_000;
+    const options = { lists, storage, fetch, publicSuffixListUrls: [], now };
+    expect(await updateLists(options)).toBe(true);
+    expect(fetch.requests).toHaveLength(2);
+    // Fresh, nothing is downloaded again.
+    expect(await updateLists(options)).toBe(false);
+    expect(fetch.requests).toHaveLength(2);
+    const engine = new Engine({ ...options, autoUpdate: false });
+    await engine.ready;
+    expect(fetch.requests).toHaveLength(2);
+    expect(engine.stats.a?.network).toBe(1);
+    engine.dispose();
+  });
+
+  test("never rejects: what fails goes to onError", async () => {
+    const errors: string[] = [];
+    const fetch = fetchStub({ [A]: { body: "||a.example^" } });
+    const changed = await updateLists({
+      lists,
+      storage: new MemoryStorage(),
+      fetch,
+      publicSuffixListUrls: [],
+      onError: (error) => errors.push(error.message),
+    });
+    expect(changed).toBe(true);
+    expect(errors).toEqual([`Couldn't download ${B}: HTTP 404`]);
   });
 });

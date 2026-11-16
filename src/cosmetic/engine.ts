@@ -12,7 +12,7 @@ import {
 import { PublicSuffixList } from "../psl/psl.js";
 import { findResource } from "../resources/index.js";
 import { findScriptlet, type ScriptletCall } from "../scriptlets/index.js";
-import { tryRegex } from "../util.js";
+import { compactBuckets, tryRegex } from "../util.js";
 
 /** What a document gets when it starts loading. */
 export interface DocumentCosmetics {
@@ -56,6 +56,8 @@ interface RegexHosted<T> {
 }
 
 const CACHE_SIZE = 256;
+/** Where a filter without hostnames applies. */
+const EVERYWHERE: readonly string[] = ["*"];
 
 function push<T>(map: Map<string, T[]>, key: string, value: T): void {
   const bucket = map.get(key);
@@ -148,14 +150,34 @@ export class CosmeticEngine {
     }
   }
 
-  /** Where a filter applies: its hostnames, or everywhere without any. */
-  private hostsOf(hosts: HostList): readonly string[] {
-    return hosts.include.length === 0 ? ["*"] : hosts.include;
+  /**
+   * Trims the memory what was added holds, once every list is in: arrays
+   * grown one filter at a time keep room for many more. Adding more after
+   * still works.
+   */
+  compact(): void {
+    compactBuckets(this.specific);
+    compactBuckets(this.genericByName);
+    compactBuckets(this.scriptlets);
   }
 
+  /** Where a filter applies: its hostnames, or everywhere without any. */
+  private hostsOf(hosts: HostList): readonly string[] {
+    return hosts.include.length === 0 ? EVERYWHERE : hosts.include;
+  }
+
+  // Made once, not for each of the 40,000 filters a build adds.
+  private readonly fileException = (host: string, key: string) =>
+    add(this.exceptions, host, key);
+  private readonly fileSpecific = (host: string, rule: CosmeticRule) =>
+    push(this.specific, host, rule);
+  private readonly fileScriptletException = (host: string, id: string) =>
+    add(this.scriptletExceptions, host, id);
+  private readonly fileScriptlet = (host: string, call: Call) =>
+    push(this.scriptlets, host, call);
+
   private addCosmetic(rule: CosmeticRule): void {
-    const except = (host: string, key: string) =>
-      add(this.exceptions, host, key);
+    const except = this.fileException;
     // A negated hostname is an exception for that hostname.
     file(rule.hosts.exclude, rule.key, except, this.exceptionRegex);
     if (rule.exception) {
@@ -165,12 +187,7 @@ export class CosmeticEngine {
     if (rule.procedural !== undefined) this.stats.procedural++;
     if (rule.hosts.include.length > 0) {
       this.stats.specific++;
-      file(
-        rule.hosts.include,
-        rule,
-        (host, value) => push(this.specific, host, value),
-        this.specificRegex,
-      );
+      file(rule.hosts.include, rule, this.fileSpecific, this.specificRegex);
       return;
     }
     const key = selectorKey(rule.selector);
@@ -187,8 +204,7 @@ export class CosmeticEngine {
     const scriptlet = findScriptlet(rule.name);
     const name = scriptlet?.name ?? rule.name;
     const id = rule.name === "" ? "" : [name, ...rule.args].join("\x00");
-    const except = (host: string, value: string) =>
-      add(this.scriptletExceptions, host, value);
+    const except = this.fileScriptletException;
     file(rule.hosts.exclude, id, except, this.scriptletExceptionRegex);
     if (rule.exception) {
       file(this.hostsOf(rule.hosts), id, except, this.scriptletExceptionRegex);
@@ -215,7 +231,7 @@ export class CosmeticEngine {
     file(
       rule.hosts.include,
       { id, name, args: rule.args, ...(resources && { resources }) },
-      (host, value) => push(this.scriptlets, host, value),
+      this.fileScriptlet,
       this.scriptletRegex,
     );
   }

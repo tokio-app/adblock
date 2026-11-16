@@ -37,6 +37,8 @@ paths:
 - The rest go under a token: a run of letters, digits and `%` that any URL the pattern matches holds whole (`src/network/tokens.ts`). A run next to `*`, or at an unanchored end of the pattern, could be part of a longer token and isn't one. From a regular expression only what is certain counts: a wrong token hides the rule from the requests it should match, so when in doubt give none.
 - A rule without a token goes under each site of its `domain=`, or is tested against every request (`rest`).
 - `finalizing()` is `finalize()` in steps: `Engine` gives the event loop a turn between them.
+- Until `finalize()`, `NetworkEngine` keeps plain `||hostname^` rules as their hostname and that number (`pendingHosts`), not as rule objects: they're most of a list, and every rule waits for the last list's `badfilter`s. A rule's key (`ruleKey`) is only made when a `badfilter` has its pattern.
+- A string the index keeps must be one of its own (`ownString`): V8 makes a substring of 13 characters or more a view into its parent, so a hostname cut out of a line keeps the whole line, and one cut out of the list's text keeps the whole list. The parser gives `P_HOST` patterns their own; `FilterIndex` copies packed paths. Arrays grown by push keep room for 16 more entries, so the buckets get exact copies once filed (`compactBuckets`).
 
 ## Public Suffix List
 
@@ -44,4 +46,4 @@ paths:
 
 ## Measuring
 
-`yarn bench` (after `yarn lists`) builds the engine from `lists/` and prints the times, the heap and requests per second over made-up traffic; `--skip <list id>` leaves a list out. On the development machine, with the nine default lists (307,000 lines, 237,000 network rules): parse 550 ms, file 210 ms, 41 MB of heap (21 MB without `urlhaus-1`), 110,000 requests a second. A change that makes one of these clearly worse needs a reason.
+`yarn bench` (after `yarn lists`) builds the engine from `lists/` and prints the times, the heap and requests per second over made-up traffic; `--skip <list id>` leaves a list out. On the development machine, with the nine default lists (307,000 lines, 237,000 network rules): parse 400 ms, file 210 ms, 55 MB of heap with the cosmetic engine (40 MB without `urlhaus-1`), 100,000 requests a second. A change that makes one of these clearly worse needs a reason.

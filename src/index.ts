@@ -12,11 +12,15 @@ export { ADBLOCK_SCHEME, adblockScheme } from "./electron/scheme.js";
 export {
   Engine,
   PUBLIC_SUFFIX_LIST_URLS,
+  updateLists,
   type EngineOptions,
+  type UpdateListsOptions,
 } from "./engine.js";
 export { DEFAULT_LISTS } from "./lists/defaults.js";
 export {
+  linesOf,
   ListManager,
+  type FetchedList,
   type FetchLike,
   type ListDefinition,
   type ListManagerOptions,

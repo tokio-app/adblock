@@ -50,6 +50,22 @@ export interface LoadedList {
   changed: boolean;
 }
 
+/** A list's text and its sub-lists', before the directives are applied. */
+export interface FetchedList {
+  id: string;
+  trusted: boolean;
+  text: string;
+  /** The texts of the sub-lists it `!#include`s, by path. */
+  included: ReadonlyMap<string, string>;
+  /** Whether a download changed it since the copy in the storage. */
+  changed: boolean;
+}
+
+/** A fetched list's lines: its directives applied, its sub-lists in place. */
+export function linesOf(list: FetchedList): string[] {
+  return preprocess(list.text, { include: (path) => list.included.get(path) });
+}
+
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 const DEFAULT_UPDATE_DAYS = 5;
@@ -104,6 +120,21 @@ export class ListManager {
    * Rejects only when there is neither.
    */
   async load(list: ListDefinition, force = false): Promise<LoadedList> {
+    const fetched = await this.get(list, force);
+    return {
+      id: fetched.id,
+      trusted: fetched.trusted,
+      lines: linesOf(fetched),
+      changed: fetched.changed,
+    };
+  }
+
+  /**
+   * Gives a list's text and its sub-lists', as `load` finds them, without
+   * splitting them into lines: a host that parses lists one at a time holds
+   * only one list's lines.
+   */
+  async get(list: ListDefinition, force = false): Promise<FetchedList> {
     const main = await this.resource(list.id, list.urls, list, force);
     const included = new Map<string, string>();
     let changed = main.changed;
@@ -131,9 +162,8 @@ export class ListManager {
     return {
       id: list.id,
       trusted: list.trusted === true,
-      lines: preprocess(main.resource.text, {
-        include: (path) => included.get(path),
-      }),
+      text: main.resource.text,
+      included,
       changed,
     };
   }
@@ -151,13 +181,12 @@ export class ListManager {
     const stored = await this.storage.read(key);
     const lifetime = (text: string) =>
       expiresAfter(text) ?? (list.updateAfterDays ?? DEFAULT_UPDATE_DAYS) * DAY;
-    if (
-      stored !== undefined &&
-      !force &&
-      this.now() - stored.fetchedAt < lifetime(stored.text)
-    ) {
-      this.expiries.set(key, stored.fetchedAt + lifetime(stored.text));
-      return { resource: stored, changed: false, fetched: false };
+    if (stored !== undefined && !force) {
+      const expiry = stored.fetchedAt + lifetime(stored.text);
+      if (this.now() < expiry) {
+        this.expiries.set(key, expiry);
+        return { resource: stored, changed: false, fetched: false };
+      }
     }
     let resource: StoredResource;
     try {
@@ -202,8 +231,9 @@ export class ListManager {
         }
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         const text = await response.text();
-        // An error page served with a 200 isn't a list.
-        if (text.trim() === "" || /^\s*<(?:!doctype|html)/i.test(text)) {
+        // An error page served with a 200 isn't a list. (Not `trim()`: that
+        // would copy megabytes to look at the ends.)
+        if (!/\S/.test(text) || /^\s*<(?:!doctype|html)/i.test(text)) {
           throw new Error("not a filter list");
         }
         return {

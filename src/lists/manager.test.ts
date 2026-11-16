@@ -4,7 +4,12 @@ import path from "node:path";
 import { afterEach, describe, expect, test } from "vitest";
 import { fetchStub } from "../../test/helpers/fetchStub.js";
 import { DEFAULT_LISTS } from "./defaults.js";
-import { ListManager, expiresAfter, type ListDefinition } from "./manager.js";
+import {
+  ListManager,
+  expiresAfter,
+  linesOf,
+  type ListDefinition,
+} from "./manager.js";
 import { FileStorage, MemoryStorage } from "./storage.js";
 
 const HOUR = 3_600_000;
@@ -294,5 +299,21 @@ describe("DEFAULT_LISTS", () => {
       expect(one.urls.length).toBeGreaterThan(0);
       for (const url of one.urls) expect(url).toMatch(/^https:\/\//);
     }
+  });
+});
+
+describe("ListManager.get", () => {
+  test("gives the texts load() reads, before their directives apply", async () => {
+    const text = ["||a.example^", "!#include extra.txt"].join("\n");
+    const { manager } = setup({
+      [MAIN]: { body: text },
+      "https://lists.example/filters/extra.txt": { body: "||b.example^" },
+    });
+    const fetched = await manager.get(list);
+    expect(fetched.text).toBe(text);
+    expect([...fetched.included]).toEqual([["extra.txt", "||b.example^"]]);
+    expect(fetched.changed).toBe(true);
+    expect(linesOf(fetched)).toEqual(["||a.example^", "||b.example^"]);
+    expect(linesOf(fetched)).toEqual((await manager.load(list)).lines);
   });
 });

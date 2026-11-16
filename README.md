@@ -40,6 +40,7 @@ app.whenReady().then(async () => {
 - Nothing the blocker does can fail a page load: what goes wrong is passed to `onError`.
 - By default it applies the lists uBlock Origin enables by default (`DEFAULT_LISTS`). Pass `lists` to choose: `DEFAULT_LISTS.filter((list) => list.id !== "urlhaus-1")` leaves out the largest one, which holds a third of the memory.
 - `blocker.counts` says how many requests were blocked, redirected and rewritten, and how many scriptlets were given to documents.
+- To make the blocker only when a page needs it, call `updateLists({ lists, storage })` at startup instead: it downloads what expired into the storage and builds nothing, so the blocker made later starts without waiting for the network.
 
 What you need to know as the host app:
 
@@ -57,7 +58,7 @@ What you need to know as the host app:
 - **Cosmetic filters:** specific, entity and generic filters, exceptions, `generichide`, `specifichide` and `elemhide`, `:style()`, and the procedural operators (`:has-text()`, `:upward()`, `:matches-css()`, `:matches-path()`, `:xpath()`, `:remove()`, `:remove-attr()` and the rest).
 - **Scriptlets:** 95, every one uBlock Origin's default lists use but six that it doesn't document. `trusted-` scriptlets only run from trusted lists, which by default are uBlock Origin's own.
 
-With the nine default lists (307,000 lines) it is ready about a second and a half after it finds them in the storage, holds about 63 MB, and decides between 55,000 and 110,000 requests a second, depending on what else the machine is doing.
+With the nine default lists (307,000 lines) it is ready in under a second after it finds them in the storage, holds about 50 MB, and decides between 55,000 and 110,000 requests a second, depending on what else the machine is doing. Without `urlhaus-1` it holds about 36 MB.
 
 ## What it doesn't
 

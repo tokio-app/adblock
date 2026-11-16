@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { parseList } from "./index.js";
+import { parseNetworkFilter } from "./network.js";
 import { P_HOST, T_DOCUMENT, T_NETWORK } from "./types.js";
 
 describe("parseList", () => {
@@ -93,5 +94,24 @@ describe("parseList", () => {
     expect(parseList(text, { trusted: true }).scriptlets[0]?.trusted).toBe(
       true,
     );
+  });
+});
+
+describe("plain hostname filters", () => {
+  test("parse as the whole parser parses them", () => {
+    for (const line of [
+      "||ads.example^",
+      "@@||cdn.ads.example^",
+      "||a-b_c.long-hostname.example^",
+      // These take the whole parser: a capital, an option, a path, no dot.
+      "||Ads.example^",
+      "||ads.example^$script",
+      "||ads.example/x^",
+      "||localhost^",
+    ]) {
+      expect(parseList(line).network).toEqual([
+        parseNetworkFilter(line, { trusted: false }),
+      ]);
+    }
   });
 });

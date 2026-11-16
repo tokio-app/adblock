@@ -16,6 +16,8 @@ paths:
 - A failed download never throws past a stored copy: the copy stays in effect and the list is tried again an hour later. `ListManager.load` rejects only when a list is neither stored nor downloadable.
 - A list without `! Expires:` lasts `updateAfterDays`, 5 days by default (our choice: the wiki doesn't give uBlock Origin's).
 - `Engine` parses in slices of `SLICE` lines with a turn of the event loop between them: a host's main process must not freeze while 300,000 lines load. A changed list rebuilds everything; parsed rules aren't kept per list, to not hold them twice.
+- A build fetches every list first (`ListManager.get`: texts only), then splits, parses and files one list at a time, each slice's rules handed to the engines before the next slice: holding every list's lines and rules at once made the peak twice what the engines keep. `updateLists()` is that first step alone, for a host that builds the engine only when it needs it.
+- `preprocess` walks the text line by line instead of splitting it, and `includesOf` only reads the lines a directive starts. Their output must stay what a split at `\r?\n` gives (`preprocessor.test.ts`).
 - `yarn lists` (opt-in, network) downloads the default lists into `lists/` and prints the counts. Its `--samples` prints list lines: terminal only, never into the repository.
 
 ## Pre-parsing directives
@@ -37,6 +39,7 @@ Choices where the wiki doesn't pin the behavior down, or where the obvious readi
 - A selector list with procedural parts (`.a, .b:has-text(x)`) gives one rule per procedural part and one for the plain parts. The wiki says such lists aren't supported, but uBlock Origin's own lists have them.
 - `##selector { declarations }` is read like AdGuard's `#$#` (EasyList writes it that way), and `#%#//scriptlet(...)` like `##+js(...)`.
 - Plain selectors are only checked for balance, braces, comments and control characters (`splitOperators`, `plainSelectorError`): an unbalanced `[` or `(` would swallow the rules after it in a stylesheet. Whether a selector is valid CSS is left to the page, where each selector gets its own rule so a bad one only loses itself.
+- `||hostname^` and `@@||hostname^` in lowercase, without options, skip the whole parser (`plainHostFilter`, `src/parser/index.ts`): they're most of the lists. The result must stay what `parseNetworkFilter` gives (`index.test.ts`); anything else, a capital included, takes the whole parser. Their `raw` is cut out of the list's text: the network engine packs them and drops it.
 - `requestheader=` appears once in uBlock Origin's lists and isn't in the wiki: it is discarded as an unknown option until it is documented (the user's call).
 
 Not applied, and counted as `unsupported` (`yarn lists` prints them): HTML filters (`##^`, except `##^responseheader()`) and `replace=` (Electron can't rewrite response bodies), `cname`, and `popunder` (needs a browser's tabs).
